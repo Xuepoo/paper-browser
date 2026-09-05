@@ -224,6 +224,17 @@ window.addEventListener("message", (e) => {
     if (e.data.url) {
       createTab(e.data.url, "新标签页", true);
     }
+  } else if (e.data.type === "paper_location_change") {
+    const activeTab = tabsList.find((t) => t.id === activeTabId);
+    if (activeTab && e.data.url) {
+      activeTab.url = e.data.url;
+      if (e.data.title) {
+        activeTab.title = e.data.title;
+        const titleEl = activeTab.tabElement?.querySelector(".tab-title");
+        if (titleEl) titleEl.textContent = activeTab.title;
+      }
+      urlInput.value = e.data.url;
+    }
   }
 });
 
