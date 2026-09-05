@@ -272,7 +272,7 @@
                           流量走您本机真实网络或代理客户端，解决 Google 异常流量与 ChatGPT
                           机房屏蔽。
                           <div class="local-port-config">
-                            <span>服务地址: <code>http://127.0.0.1:</code></span>
+                            <span>反代服务: <code>http://127.0.0.1:</code></span>
                             <input
                               type="number"
                               id="inputLocalPort"
@@ -280,8 +280,47 @@
                               value="3000"
                               min="1000"
                               max="65535"
-                              title="自定义本地反代服务端口"
+                              title="自定义本地反代服务端口 (默认3000)"
                             />
+                          </div>
+                          <div class="clash-port-config">
+                            <span class="clash-config-label"
+                              >科学代理上游端口 (Clash/Mihomo/V2Ray):</span
+                            >
+                            <div class="clash-port-presets" id="clashPresets">
+                              <button
+                                type="button"
+                                class="preset-pill active"
+                                data-clash-port="7890"
+                              >
+                                7890 (Clash)
+                              </button>
+                              <button type="button" class="preset-pill" data-clash-port="7897">
+                                7897 (Mihomo)
+                              </button>
+                              <button type="button" class="preset-pill" data-clash-port="10808">
+                                10808 (v2ray)
+                              </button>
+                              <button type="button" class="preset-pill" data-clash-port="1080">
+                                1080 (SS)
+                              </button>
+                              <button type="button" class="preset-pill" data-clash-port="none">
+                                直连
+                              </button>
+                            </div>
+                            <div class="custom-clash-input-row">
+                              <span>输入自定义端口:</span>
+                              <input
+                                type="number"
+                                id="inputClashPort"
+                                class="port-input"
+                                value="7890"
+                                min="1"
+                                max="65535"
+                                placeholder="7890"
+                                title="输入您的本机科学代理端口，如 7890、7897、1080"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

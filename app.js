@@ -12,13 +12,17 @@
 // Proxy Modes: 'edge' (Cloudflare CDN) | 'local' (127.0.0.1:3000 personal net) | 'direct' (raw URL) | 'custom'
 let proxyMode = localStorage.getItem("paper_proxy_mode") || "edge";
 let localProxyPort = localStorage.getItem("paper_local_port") || "3000";
+let clashProxyPort = localStorage.getItem("paper_clash_port") || "7890";
 let customProxyUrl =
   localStorage.getItem("paper_custom_proxy") || `http://127.0.0.1:${localProxyPort}/api/proxy`;
 
 function getLocalProxyUrl() {
-  return `http://127.0.0.1:${localProxyPort}/api/proxy`;
+  const base = `http://127.0.0.1:${localProxyPort}/api/proxy`;
+  if (clashProxyPort && clashProxyPort !== "none" && clashProxyPort !== "0") {
+    return `${base}?proxy_port=${encodeURIComponent(clashProxyPort)}`;
+  }
+  return base;
 }
-
 function getProxiedUrl(targetUrl) {
   if (!targetUrl) return "";
   if (proxyMode === "direct") {
@@ -112,6 +116,9 @@ const inputLocalPort = document.getElementById("inputLocalPort");
 const btnCopyServerCmd = document.getElementById("btnCopyServerCmd");
 const btnToggleClickShake = document.getElementById("btnToggleClickShake");
 const iconClickShake = document.getElementById("iconClickShake");
+const inputClashPort = document.getElementById("inputClashPort");
+const clashPresets = document.getElementById("clashPresets");
+
 const labelClickShake = document.getElementById("labelClickShake");
 
 // Window Traffic Lights
@@ -879,6 +886,10 @@ window.addEventListener("message", (e) => {
     if (activeTabId) {
       navigateTab(activeTabId, e.data.url);
     }
+  } else if (e.data?.type === "paper_new_tab") {
+    if (e.data.url) {
+      createTab(e.data.url, "新标签页", true);
+    }
   }
 });
 
@@ -1184,10 +1195,59 @@ if (inputLocalPort) {
   });
 }
 
+function setClashPort(port) {
+  clashProxyPort = String(port).trim();
+  localStorage.setItem("paper_clash_port", clashProxyPort);
+
+  if (inputClashPort) {
+    inputClashPort.value = clashProxyPort === "none" ? "" : clashProxyPort;
+  }
+
+  clashPresets?.querySelectorAll(".preset-pill").forEach((pill) => {
+    pill.classList.toggle("active", pill.getAttribute("data-clash-port") === clashProxyPort);
+  });
+
+  const cmdSnippet = document.getElementById("cmdSnippet");
+  if (cmdSnippet) {
+    const p = clashProxyPort === "none" ? "7890" : clashProxyPort;
+    cmdSnippet.textContent = `HTTPS_PROXY=http://127.0.0.1:${p} bun run server`;
+  }
+
+  if (proxyMode === "local") {
+    checkLocalProxyHealth();
+    const activeTab = tabsList.find((t) => t.id === activeTabId);
+    if (activeTab && !activeTab.isNewTab && activeTab.url) {
+      navigateTab(activeTab.id, activeTab.url, false);
+    }
+  }
+}
+
+clashPresets?.querySelectorAll(".preset-pill").forEach((pill) => {
+  pill.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const port = pill.getAttribute("data-clash-port");
+    if (port) setClashPort(port);
+  });
+});
+
+if (inputClashPort) {
+  inputClashPort.value = clashProxyPort === "none" ? "" : clashProxyPort;
+  inputClashPort.addEventListener("change", (e) => {
+    const val = e.target.value.trim();
+    if (val && !isNaN(Number(val))) {
+      setClashPort(val);
+    } else if (!val) {
+      setClashPort("none");
+    }
+  });
+}
+
 if (btnCopyServerCmd) {
   btnCopyServerCmd.addEventListener("click", async () => {
+    const p = clashProxyPort === "none" ? "7890" : clashProxyPort;
+    const cmd = `HTTPS_PROXY=http://127.0.0.1:${p} bun run server`;
     try {
-      await navigator.clipboard.writeText("HTTPS_PROXY=http://127.0.0.1:7890 bun run server");
+      await navigator.clipboard.writeText(cmd);
       btnCopyServerCmd.textContent = "✓ 已复制!";
       setTimeout(() => {
         btnCopyServerCmd.textContent = "📋 复制";
