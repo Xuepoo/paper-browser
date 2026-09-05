@@ -166,11 +166,33 @@ export default {
       resolvedUrl = a.href;
     }
 
+    var targetAttr = (a.getAttribute('target') || '').toLowerCase();
+    var isNewTab = targetAttr === '_blank' || e.ctrlKey || e.metaKey;
+
     window.parent.postMessage({
-      type: 'paper_navigate',
+      type: isNewTab ? 'paper_new_tab' : 'paper_navigate',
       url: resolvedUrl
     }, '*');
   }, true);
+
+  // Intercept window.open to open inside Paper Browser tabs
+  try {
+    window.open = function(url) {
+      if (url) {
+        var resolvedUrl;
+        try {
+          resolvedUrl = new URL(url, "${parsedTarget.href}").href;
+        } catch(err) {
+          resolvedUrl = url;
+        }
+        window.parent.postMessage({
+          type: 'paper_new_tab',
+          url: resolvedUrl
+        }, '*');
+      }
+      return null;
+    };
+  } catch(err) {}
 
   document.addEventListener('submit', function(e) {
     var form = e.target;
