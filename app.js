@@ -1,3 +1,6 @@
+import { detectWicgCapabilities } from "./src/surface/detector.ts";
+import { HtmlCanvasSurface } from "./src/surface/HtmlCanvasSurface.ts";
+
 /**
  * Paper Browser: Full-Featured 3D Floating Paper Browser
  * Features:
@@ -585,10 +588,11 @@ function createTab(url = null, title = "新标签页", activate = true) {
               <span class="sd-desc">HTML in Canvas 原生绘制提案说明</span>
             </div>
           </div>
-          <div class="speeddial-card" data-url="https://example.com">
+          <div class="speeddial-card wicg-special-card" id="btnLaunchWicgPoc">
+            <div class="sd-icon">🎨</div>
             <div class="sd-info">
-              <span class="sd-title">Example Domain</span>
-              <span class="sd-desc">标准基础连通性测试</span>
+              <span class="sd-title">WICG 原生画布置入 PoC</span>
+              <span class="sd-desc">体验真正的 layoutsubtree + drawElementImage()</span>
             </div>
           </div>
         </div>
@@ -613,6 +617,10 @@ function createTab(url = null, title = "新标签页", activate = true) {
         const u = card.getAttribute("data-url");
         if (u) navigateTab(tabId, u);
       });
+    });
+
+    pane.querySelector("#btnLaunchWicgPoc")?.addEventListener("click", () => {
+      createWicgNativeTab();
     });
   } else {
     pane.innerHTML = `
@@ -655,6 +663,20 @@ function createTab(url = null, title = "新标签页", activate = true) {
   }
 
   return tabData;
+}
+
+function createWicgNativeTab() {
+  const tabData = createTab("wicg://native-canvas", "🎨 WICG 原生画布", true);
+  if (tabData && tabData.paneElement) {
+    tabData.paneElement.innerHTML = "";
+    tabData.paneElement.classList.remove("newtab-pane");
+    tabData.favicon = "🎨";
+    const favEl = tabData.tabElement.querySelector(".tab-favicon");
+    if (favEl) favEl.textContent = "🎨";
+
+    const surface = new HtmlCanvasSurface();
+    surface.mount(tabData.paneElement);
+  }
 }
 
 function closeTab(tabId) {
@@ -1468,10 +1490,16 @@ function initPaperBrowser() {
   createTab(null, "新标签页", true);
   updateProxyUI();
 
-  statusDot.className = "dot active";
-  statusText.textContent = "3D 物理纸张引擎: 运行中 (动态多标签 + DPR缩放)";
-  valEngine.textContent = "3D Paper Browser";
-
+  const wicgCaps = detectWicgCapabilities();
+  if (wicgCaps.hasDrawElementImage) {
+    statusDot.className = "dot active";
+    statusText.textContent = "WICG 原生引擎: 已就绪 (原生硬件加速已开启)";
+    valEngine.textContent = "WICG Native";
+  } else {
+    statusDot.className = "dot";
+    statusText.textContent = "3D 物理纸张兼容层 (开启 canvas-draw-element 体验原生引擎)";
+    valEngine.textContent = "Iframe Surface";
+  }
   requestAnimationFrame(animationLoop);
 }
 
