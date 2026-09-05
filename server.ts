@@ -1,9 +1,13 @@
 import { serve } from "bun";
 import { join } from "path";
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const BASE_DIR = import.meta.dir;
-const PROXY_AGENT = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || "http://127.0.0.1:1080";
+const PROXY_AGENT =
+  process.env.HTTPS_PROXY ||
+  process.env.HTTP_PROXY ||
+  process.env.ALL_PROXY ||
+  "http://127.0.0.1:7890";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",

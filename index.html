@@ -130,7 +130,7 @@
 
         <div class="dock-section">
           <span class="dock-label">物理交互 (3D Interaction)</span>
-          <div class="dock-btn-grid">
+          <div class="dock-btn-grid three-col">
             <button
               class="dock-toggle-btn"
               id="btnToggleTiltLock"
@@ -146,6 +146,14 @@
             >
               <span class="toggle-icon">💧</span>
               <span>水墨涟漪</span>
+            </button>
+            <button
+              class="dock-toggle-btn"
+              id="btnToggleClickShake"
+              title="开关点击时的纸面微振颤晃动（默认关闭，保持平稳阅读）"
+            >
+              <span class="toggle-icon" id="iconClickShake">📳</span>
+              <span id="labelClickShake">静止模式</span>
             </button>
           </div>
         </div>
@@ -258,13 +266,23 @@
                       <input type="radio" name="proxyMode" value="local" />
                       <div class="option-content">
                         <div class="option-title">
-                          💻 本机网络 / 本地代理 (推荐用于 Google / ChatGPT)
+                          💻 本机网络 / 本地反向代理 (推荐用于 Google / ChatGPT)
                         </div>
                         <div class="option-desc">
-                          通过
-                          <code>http://127.0.0.1:3000</code>
-                          发起请求，流量走您本机真实网络与代理客户端（如 Clash/V2Ray），彻底解决
-                          Google 异常流量人机验证与 ChatGPT 机房屏蔽！
+                          流量走您本机真实网络或代理客户端，解决 Google 异常流量与 ChatGPT
+                          机房屏蔽。
+                          <div class="local-port-config">
+                            <span>服务地址: <code>http://127.0.0.1:</code></span>
+                            <input
+                              type="number"
+                              id="inputLocalPort"
+                              class="port-input"
+                              value="3000"
+                              min="1000"
+                              max="65535"
+                              title="自定义本地反代服务端口"
+                            />
+                          </div>
                         </div>
                       </div>
                     </label>
@@ -294,8 +312,21 @@
                   </div>
                   <div class="dropdown-footer">
                     <div class="local-tip">
-                      💡 <strong>提示:</strong> 切换为「本机网络」模式时，请在本地终端执行
-                      <code>bun run server</code> 保持本地服务开启。
+                      <div class="tip-row">
+                        💡 <strong>关于 Clash / Mihomo 7890 / 7897 端口:</strong>
+                      </div>
+                      <div class="tip-desc">
+                        7890、7897 是正向代理协议端口，网页 iframe 无法直接直连。
+                        只需在终端通过环境变量运行：
+                      </div>
+                      <div class="cmd-snippet-box">
+                        <code id="cmdSnippet"
+                          >HTTPS_PROXY=http://127.0.0.1:7890 bun run server</code
+                        >
+                        <button class="copy-cmd-btn" id="btnCopyServerCmd" title="复制启动命令">
+                          📋 复制
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
