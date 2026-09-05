@@ -9,36 +9,41 @@
  * - 3D spring tilt physics & interactive fluid canvas ripples
  */
 
-// Proxy Modes: 'edge' (Cloudflare CDN) | 'local' (127.0.0.1:3000 personal net) | 'direct' (raw URL) | 'custom'
-let proxyMode = localStorage.getItem("paper_proxy_mode") || "edge";
-let localProxyPort = localStorage.getItem("paper_local_port") || "3000";
-let clashProxyPort = localStorage.getItem("paper_clash_port") || "7890";
-let customProxyUrl =
-  localStorage.getItem("paper_custom_proxy") || `http://127.0.0.1:${localProxyPort}/api/proxy`;
+// SwitchyOmega Proxy Profile: scheme, host, port, mode
+let proxyProfile = {
+  mode: localStorage.getItem("paper_proxy_mode") || "edge", // 'edge' | 'local' | 'direct'
+  scheme: localStorage.getItem("paper_proxy_scheme") || "http", // 'http' | 'socks5'
+  host: localStorage.getItem("paper_proxy_host") || "127.0.0.1",
+  port: localStorage.getItem("paper_proxy_port") || "7890",
+  localServerPort: localStorage.getItem("paper_local_port") || "3000",
+};
+
+function getFullProxyAgentUri() {
+  if (proxyProfile.port === "none" || !proxyProfile.port) return "";
+  return `${proxyProfile.scheme}://${proxyProfile.host}:${proxyProfile.port}`;
+}
 
 function getLocalProxyUrl() {
-  const base = `http://127.0.0.1:${localProxyPort}/api/proxy`;
-  if (clashProxyPort && clashProxyPort !== "none" && clashProxyPort !== "0") {
-    return `${base}?proxy_port=${encodeURIComponent(clashProxyPort)}`;
-  }
-  return base;
+  const base = `http://127.0.0.1:${proxyProfile.localServerPort}/api/proxy`;
+  const agent = getFullProxyAgentUri();
+  const agentQuery = agent ? `&proxy_agent=${encodeURIComponent(agent)}` : "";
+  return `${base}?clash_port=${encodeURIComponent(proxyProfile.port)}${agentQuery}`;
 }
+
 function getProxiedUrl(targetUrl) {
   if (!targetUrl) return "";
-  if (proxyMode === "direct") {
+  if (proxyProfile.mode === "direct") {
     return targetUrl;
   }
-  if (proxyMode === "local") {
-    return `${getLocalProxyUrl()}?url=${encodeURIComponent(targetUrl)}`;
-  }
-  if (proxyMode === "custom" && customProxyUrl) {
-    const sep = customProxyUrl.includes("?") ? "&" : "?";
-    return `${customProxyUrl}${sep}url=${encodeURIComponent(targetUrl)}`;
+  if (proxyProfile.mode === "local") {
+    const base = getLocalProxyUrl();
+    const sep = base.includes("?") ? "&" : "?";
+    return `${base}${sep}url=${encodeURIComponent(targetUrl)}`;
   }
   return `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
 }
 function getSandboxAttr() {
-  if (proxyMode === "direct") {
+  if (proxyProfile.mode === "direct") {
     return "";
   }
   return 'sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-popups-to-escape-sandbox"';
@@ -108,16 +113,10 @@ const proxyPillIcon = document.getElementById("proxyPillIcon");
 const proxyPillLabel = document.getElementById("proxyPillLabel");
 const proxyStatusDot = document.getElementById("proxyStatusDot");
 const proxyStatusTag = document.getElementById("proxyStatusTag");
-const proxyDropdown = document.getElementById("proxyDropdown");
-const customProxyInput = document.getElementById("customProxyInput");
 const btnDockProxyEdge = document.getElementById("btnDockProxyEdge");
 const btnDockProxyLocal = document.getElementById("btnDockProxyLocal");
-const inputLocalPort = document.getElementById("inputLocalPort");
-const btnCopyServerCmd = document.getElementById("btnCopyServerCmd");
 const btnToggleClickShake = document.getElementById("btnToggleClickShake");
 const iconClickShake = document.getElementById("iconClickShake");
-const inputClashPort = document.getElementById("inputClashPort");
-const clashPresets = document.getElementById("clashPresets");
 
 const labelClickShake = document.getElementById("labelClickShake");
 
@@ -991,11 +990,11 @@ if (btnCollapseDock && controlDock) {
 let localProxyHealth = "unknown";
 
 async function checkLocalProxyHealth() {
-  if (proxyMode !== "local") return;
+  if (proxyProfile.mode !== "local") return;
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1800);
-    const resp = await fetch(`${getLocalProxyUrl()}?url=https://example.com`, {
+    const resp = await fetch(`${getLocalProxyUrl()}&url=https://example.com`, {
       method: "HEAD",
       signal: controller.signal,
     });
@@ -1014,36 +1013,25 @@ async function checkLocalProxyHealth() {
 function renderProxyStatusIndicator() {
   if (!proxyPill) return;
 
-  proxyPill.classList.remove(
-    "mode-edge",
-    "mode-local-ok",
-    "mode-local-err",
-    "mode-direct",
-    "mode-custom",
-  );
+  proxyPill.classList.remove("mode-edge", "mode-local-ok", "mode-local-err", "mode-direct");
 
-  if (proxyMode === "local") {
+  if (proxyProfile.mode === "local") {
     if (localProxyHealth === "online") {
       proxyPill.classList.add("mode-local-ok");
       if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot online";
       if (proxyStatusTag) proxyStatusTag.textContent = "已连接";
-      proxyPill.title = `本机网络 (127.0.0.1:${localProxyPort}): 正常连接中`;
+      proxyPill.title = `Switchy 代理 (${getFullProxyAgentUri()}): 正常连通中`;
     } else {
       proxyPill.classList.add("mode-local-err");
       if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot offline";
       if (proxyStatusTag) proxyStatusTag.textContent = "未启动";
-      proxyPill.title = `本机 ${localProxyPort} 端口未响应或被浏览器 HTTPS 拦截。请执行 bun run server 或切换直连模式。`;
+      proxyPill.title = `本机服务 (127.0.0.1:${proxyProfile.localServerPort}) 未响应或被浏览器 HTTPS 拦截。`;
     }
-  } else if (proxyMode === "direct") {
+  } else if (proxyProfile.mode === "direct") {
     proxyPill.classList.add("mode-direct");
     if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot direct";
-    if (proxyStatusTag) proxyStatusTag.textContent = "直连模式";
+    if (proxyStatusTag) proxyStatusTag.textContent = "直连";
     proxyPill.title = "直连模式: 网页直接在 iframe 渲染，走当前浏览器网络和环境";
-  } else if (proxyMode === "custom") {
-    proxyPill.classList.add("mode-edge");
-    if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot edge";
-    if (proxyStatusTag) proxyStatusTag.textContent = "自定义";
-    proxyPill.title = `自定义代理: ${customProxyUrl}`;
   } else {
     // edge
     proxyPill.classList.add("mode-edge");
@@ -1054,21 +1042,17 @@ function renderProxyStatusIndicator() {
 }
 
 function updateProxyUI() {
-  const isEdge = proxyMode === "edge";
-  const isLocal = proxyMode === "local";
-  const isDirect = proxyMode === "direct";
-  const isCustom = proxyMode === "custom";
+  const isEdge = proxyProfile.mode === "edge";
+  const isLocal = proxyProfile.mode === "local";
+  const isDirect = proxyProfile.mode === "direct";
 
   if (proxyPillIcon && proxyPillLabel) {
     if (isLocal) {
-      proxyPillIcon.textContent = "💻";
-      proxyPillLabel.textContent = "本机网络";
+      proxyPillIcon.textContent = "🛡️";
+      proxyPillLabel.textContent = `${proxyProfile.host}:${proxyProfile.port}`;
     } else if (isDirect) {
       proxyPillIcon.textContent = "⚡";
       proxyPillLabel.textContent = "直连模式";
-    } else if (isCustom) {
-      proxyPillIcon.textContent = "⚙️";
-      proxyPillLabel.textContent = "自定义代理";
     } else {
       proxyPillIcon.textContent = "☁️";
       proxyPillLabel.textContent = "边缘代理";
@@ -1082,27 +1066,73 @@ function updateProxyUI() {
 
   btnDockProxyEdge?.classList.toggle("active", isEdge);
   btnDockProxyLocal?.classList.toggle("active", isLocal);
+  const btnDockProxyDirect = document.getElementById("btnDockProxyDirect");
+  btnDockProxyDirect?.classList.toggle("active", isDirect);
 
-  const radio = document.querySelector(`input[name="proxyMode"][value="${proxyMode}"]`);
+  const dockCurrentProxyLbl = document.getElementById("dockCurrentProxyLbl");
+  if (dockCurrentProxyLbl) {
+    dockCurrentProxyLbl.textContent = `目标: ${proxyProfile.host}:${proxyProfile.port}`;
+  }
+
+  const radio = document.querySelector(
+    `input[name="modalProxyMode"][value="${proxyProfile.mode}"]`,
+  );
   if (radio) radio.checked = true;
 
-  document.querySelectorAll(".proxy-option").forEach((opt) => {
-    opt.classList.toggle("active", opt.getAttribute("data-mode") === proxyMode);
+  document.querySelectorAll(".modal-option").forEach((opt) => {
+    opt.classList.toggle("active", opt.getAttribute("data-mode") === proxyProfile.mode);
   });
+
+  // Switchy inputs update
+  const switchySchemeSelect = document.getElementById("switchySchemeSelect");
+  const switchyHostInput = document.getElementById("switchyHostInput");
+  const switchyPortInput = document.getElementById("switchyPortInput");
+  const switchyPreviewUri = document.getElementById("switchyPreviewUri");
+  const modalCmdSnippet = document.getElementById("modalCmdSnippet");
+  const modalLocalPortInput = document.getElementById("modalLocalPortInput");
+
+  if (switchySchemeSelect) switchySchemeSelect.value = proxyProfile.scheme;
+  if (switchyHostInput) switchyHostInput.value = proxyProfile.host;
+  if (switchyPortInput) switchyPortInput.value = proxyProfile.port;
+  if (modalLocalPortInput) modalLocalPortInput.value = proxyProfile.localServerPort;
+
+  const fullUri = getFullProxyAgentUri();
+  if (switchyPreviewUri) {
+    switchyPreviewUri.textContent = fullUri || "直连 (无代理)";
+  }
+  if (modalCmdSnippet) {
+    const proxyEnv = fullUri ? `HTTPS_PROXY=${fullUri} ` : "";
+    modalCmdSnippet.textContent = `${proxyEnv}PORT=${proxyProfile.localServerPort} bun run server`;
+  }
+
+  const modalStatusText = document.getElementById("modalStatusText");
+  const modalStatusDot = document.getElementById("modalStatusDot");
+  if (modalStatusText && modalStatusDot) {
+    if (isLocal) {
+      modalStatusDot.className =
+        localProxyHealth === "online"
+          ? "status-indicator-dot online"
+          : "status-indicator-dot offline";
+      modalStatusText.innerHTML = `当前出口: <strong>🛡️ 代理服务器 (${fullUri})</strong>`;
+    } else if (isDirect) {
+      modalStatusDot.className = "status-indicator-dot direct";
+      modalStatusText.innerHTML = "当前出口: <strong>⚡ 直连模式 (Direct)</strong>";
+    } else {
+      modalStatusDot.className = "status-indicator-dot edge";
+      modalStatusText.innerHTML = "当前出口: <strong>☁️ Cloudflare 边缘代理</strong>";
+    }
+  }
 
   const statusEl = document.getElementById("newtabProxyStatus");
   if (statusEl) {
     if (isLocal) {
-      statusEl.innerHTML =
-        "当前出口: <strong>💻 本地电脑网络 (127.0.0.1:3000)</strong> — 走本机真实IP/代理，已避开机房拦截";
+      statusEl.innerHTML = `当前网络: <strong>🛡️ Switchy 代理 (${fullUri})</strong> — 经由 127.0.0.1:${proxyProfile.localServerPort} 穿透`;
     } else if (isDirect) {
       statusEl.innerHTML =
-        "当前出口: <strong>⚡ 直连模式 (Direct)</strong> — 直接在 iframe 中加载目标网页，免代理";
-    } else if (isCustom) {
-      statusEl.innerHTML = `当前出口: <strong>⚙️ 自定义代理</strong> (${customProxyUrl})`;
+        "当前网络: <strong>⚡ 直连模式 (Direct)</strong> — 直接在 iframe 中加载目标网页，免代理";
     } else {
       statusEl.innerHTML =
-        "当前出口: <strong>☁️ Cloudflare 边缘节点</strong> | 若访问 Google/ChatGPT 遇到验证码可切换为「💻 本机网络」";
+        "当前网络: <strong>☁️ Cloudflare 边缘代理</strong> | 遇到 Google/ChatGPT 验证码可切换为「🛡️ 代理」";
     }
   }
 }
@@ -1111,153 +1141,165 @@ function setProxyMode(newMode) {
   if (newMode === "local" && window.location.protocol === "https:") {
     const switchToDirect = confirm(
       "⚠️ 浏览器安全策略提示 (Mixed Content):\n\n" +
-        "当前页面运行在公网 HTTPS (https://browser.xuepoo.xyz)，现代浏览器安全机制会直接拦截本地未加密的 http://127.0.0.1:3000 (混合内容限制)。\n\n" +
+        "当前页面运行在公网 HTTPS (https://browser.xuepoo.xyz)，现代浏览器安全机制会直接拦截本地未加密的 http://127.0.0.1 (混合内容限制)。\n\n" +
         "【推荐极简免端口方案】:\n" +
-        "1. 使用「⚡ 直连模式」+ Chrome 扩展 (如 Ignore X-Frame-Options)，免开 3000 端口，直接走本机网络和代理！\n" +
+        "1. 使用「⚡ 直连模式」+ Chrome 扩展 (如 Ignore X-Frame-Options)，免开本地服务，直接走当前浏览器的科学网络！\n" +
         "2. 或者在本地运行 `bun run server` 后直接在浏览器访问: http://localhost:3000\n\n" +
-        "点击「确定」自动切换为【⚡ 直连模式】(推荐)，点击「取消」继续尝试本机 3000 端口。",
+        "点击「确定」自动切换为【⚡ 直连模式】(推荐)，点击「取消」继续尝试本地端口。",
     );
     if (switchToDirect) {
       newMode = "direct";
     }
   }
 
-  proxyMode = newMode;
-  localStorage.setItem("paper_proxy_mode", proxyMode);
+  proxyProfile.mode = newMode;
+  localStorage.setItem("paper_proxy_mode", proxyProfile.mode);
   updateProxyUI();
 
-  // If active tab has an active website, reload with new proxy
   const activeTab = tabsList.find((t) => t.id === activeTabId);
   if (activeTab && !activeTab.isNewTab && activeTab.url) {
     navigateTab(activeTab.id, activeTab.url, false);
   }
 }
 
-// Proxy Switcher Listeners
+function saveAndApplySwitchyProfile(scheme, host, port) {
+  proxyProfile.scheme = scheme;
+  proxyProfile.host = host;
+  proxyProfile.port = String(port);
+
+  localStorage.setItem("paper_proxy_scheme", proxyProfile.scheme);
+  localStorage.setItem("paper_proxy_host", proxyProfile.host);
+  localStorage.setItem("paper_proxy_port", proxyProfile.port);
+
+  updateProxyUI();
+
+  const activeTab = tabsList.find((t) => t.id === activeTabId);
+  if (activeTab && !activeTab.isNewTab && activeTab.url) {
+    navigateTab(activeTab.id, activeTab.url, false);
+  }
+}
+
+// Modal Controls
+const proxyModalBackdrop = document.getElementById("proxyModalBackdrop");
+const btnOpenProxyModal = document.getElementById("btnOpenProxyModal");
+const btnCloseProxyModal = document.getElementById("btnCloseProxyModal");
+const btnModalConfirm = document.getElementById("btnModalConfirm");
+
+function openProxyModal() {
+  updateProxyUI();
+  proxyModalBackdrop?.classList.add("open");
+}
+
+function closeProxyModal() {
+  proxyModalBackdrop?.classList.remove("open");
+}
+
 if (proxyPill) {
-  proxyPill.addEventListener("click", (e) => {
-    e.stopPropagation();
-    proxyPill.classList.toggle("open");
-    proxyDropdown?.classList.toggle("open");
+  proxyPill.addEventListener("click", openProxyModal);
+}
+if (btnOpenProxyModal) {
+  btnOpenProxyModal.addEventListener("click", openProxyModal);
+}
+if (btnCloseProxyModal) {
+  btnCloseProxyModal.addEventListener("click", closeProxyModal);
+}
+if (btnModalConfirm) {
+  btnModalConfirm.addEventListener("click", closeProxyModal);
+}
+if (proxyModalBackdrop) {
+  proxyModalBackdrop.addEventListener("click", (e) => {
+    if (e.target === proxyModalBackdrop) closeProxyModal();
   });
 }
 
-document.addEventListener("click", (e) => {
-  if (!e.target.closest("#proxyPill") && !e.target.closest("#proxyDropdown")) {
-    proxyPill?.classList.remove("open");
-    proxyDropdown?.classList.remove("open");
-  }
-});
-
-document.querySelectorAll('input[name="proxyMode"]').forEach((radio) => {
+// Modal radio mode selection
+document.querySelectorAll('input[name="modalProxyMode"]').forEach((radio) => {
   radio.addEventListener("change", (e) => {
     setProxyMode(e.target.value);
   });
 });
 
-document.querySelectorAll(".proxy-option").forEach((opt) => {
+document.querySelectorAll(".modal-option").forEach((opt) => {
   opt.addEventListener("click", (e) => {
-    if (e.target.tagName === "INPUT") return;
+    if (e.target.tagName === "INPUT" || e.target.closest(".switchy-profile-card")) return;
     const mode = opt.getAttribute("data-mode");
-    if (mode) {
-      setProxyMode(mode);
-    }
+    if (mode) setProxyMode(mode);
   });
 });
 
-if (customProxyInput) {
-  customProxyInput.value = customProxyUrl;
-  customProxyInput.addEventListener("change", (e) => {
-    customProxyUrl = e.target.value.trim();
-    localStorage.setItem("paper_custom_proxy", customProxyUrl);
-    if (proxyMode === "custom") {
-      setProxyMode("custom");
-    }
-  });
-}
+// Switchy inputs listeners
+const switchySchemeSelect = document.getElementById("switchySchemeSelect");
+const switchyHostInput = document.getElementById("switchyHostInput");
+const switchyPortInput = document.getElementById("switchyPortInput");
+const modalLocalPortInput = document.getElementById("modalLocalPortInput");
 
-// Local Port & Clash Command Listeners
-if (inputLocalPort) {
-  inputLocalPort.value = localProxyPort;
-  inputLocalPort.addEventListener("change", (e) => {
-    const val = e.target.value.trim();
-    if (val && !isNaN(val)) {
-      localProxyPort = val;
-      localStorage.setItem("paper_local_port", localProxyPort);
-      if (proxyMode === "local") {
-        checkLocalProxyHealth();
-        const activeTab = tabsList.find((t) => t.id === activeTabId);
-        if (activeTab && !activeTab.isNewTab && activeTab.url) {
-          navigateTab(activeTab.id, activeTab.url, false);
-        }
-      }
-    }
-  });
-}
+const onSwitchyInputChange = () => {
+  const s = switchySchemeSelect ? switchySchemeSelect.value : "http";
+  const h = switchyHostInput ? switchyHostInput.value.trim() || "127.0.0.1" : "127.0.0.1";
+  const p = switchyPortInput ? switchyPortInput.value.trim() || "7890" : "7890";
+  saveAndApplySwitchyProfile(s, h, p);
+};
 
-function setClashPort(port) {
-  clashProxyPort = String(port).trim();
-  localStorage.setItem("paper_clash_port", clashProxyPort);
+switchySchemeSelect?.addEventListener("change", onSwitchyInputChange);
+switchyHostInput?.addEventListener("change", onSwitchyInputChange);
+switchyPortInput?.addEventListener("change", onSwitchyInputChange);
 
-  if (inputClashPort) {
-    inputClashPort.value = clashProxyPort === "none" ? "" : clashProxyPort;
+modalLocalPortInput?.addEventListener("change", (e) => {
+  const val = e.target.value.trim();
+  if (val && !isNaN(val)) {
+    proxyProfile.localServerPort = val;
+    localStorage.setItem("paper_local_port", val);
+    updateProxyUI();
   }
+});
 
-  clashPresets?.querySelectorAll(".preset-pill").forEach((pill) => {
-    pill.classList.toggle("active", pill.getAttribute("data-clash-port") === clashProxyPort);
-  });
-
-  const cmdSnippet = document.getElementById("cmdSnippet");
-  if (cmdSnippet) {
-    const p = clashProxyPort === "none" ? "7890" : clashProxyPort;
-    cmdSnippet.textContent = `HTTPS_PROXY=http://127.0.0.1:${p} bun run server`;
-  }
-
-  if (proxyMode === "local") {
-    checkLocalProxyHealth();
-    const activeTab = tabsList.find((t) => t.id === activeTabId);
-    if (activeTab && !activeTab.isNewTab && activeTab.url) {
-      navigateTab(activeTab.id, activeTab.url, false);
-    }
-  }
-}
-
-clashPresets?.querySelectorAll(".preset-pill").forEach((pill) => {
-  pill.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const port = pill.getAttribute("data-clash-port");
-    if (port) setClashPort(port);
+// Switchy presets chips
+document.querySelectorAll(".switchy-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const s = chip.getAttribute("data-scheme") || "http";
+    const h = chip.getAttribute("data-host") || "127.0.0.1";
+    const p = chip.getAttribute("data-port") || "7890";
+    saveAndApplySwitchyProfile(s, h, p);
+    document.querySelectorAll(".switchy-chip").forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
   });
 });
 
-if (inputClashPort) {
-  inputClashPort.value = clashProxyPort === "none" ? "" : clashProxyPort;
-  inputClashPort.addEventListener("change", (e) => {
-    const val = e.target.value.trim();
-    if (val && !isNaN(Number(val))) {
-      setClashPort(val);
-    } else if (!val) {
-      setClashPort("none");
-    }
+// Dock chips listeners
+document.querySelectorAll(".dock-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const s = chip.getAttribute("data-scheme") || "http";
+    const h = chip.getAttribute("data-host") || "127.0.0.1";
+    const p = chip.getAttribute("data-port") || "7890";
+    saveAndApplySwitchyProfile(s, h, p);
+    setProxyMode("local");
+    document.querySelectorAll(".dock-chip").forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
   });
-}
+});
 
-if (btnCopyServerCmd) {
-  btnCopyServerCmd.addEventListener("click", async () => {
-    const p = clashProxyPort === "none" ? "7890" : clashProxyPort;
-    const cmd = `HTTPS_PROXY=http://127.0.0.1:${p} bun run server`;
+const btnModalCopyCmd = document.getElementById("btnModalCopyCmd");
+if (btnModalCopyCmd) {
+  btnModalCopyCmd.addEventListener("click", async () => {
+    const uri = getFullProxyAgentUri() || "http://127.0.0.1:7890";
+    const cmd = `HTTPS_PROXY=${uri} PORT=${proxyProfile.localServerPort} bun run server`;
     try {
       await navigator.clipboard.writeText(cmd);
-      btnCopyServerCmd.textContent = "✓ 已复制!";
+      btnModalCopyCmd.textContent = "✓ 已复制!";
       setTimeout(() => {
-        btnCopyServerCmd.textContent = "📋 复制";
+        btnModalCopyCmd.textContent = "📋 复制启动命令";
       }, 2000);
     } catch {
-      btnCopyServerCmd.textContent = "请手动复制";
+      btnModalCopyCmd.textContent = "请手动复制";
     }
   });
 }
 
+btnDockProxyEdge?.addEventListener("click", () => setProxyMode("edge"));
+btnDockProxyLocal?.addEventListener("click", () => setProxyMode("local"));
+document
+  .getElementById("btnDockProxyDirect")
+  ?.addEventListener("click", () => setProxyMode("direct"));
 if (btnToggleClickShake) {
   btnToggleClickShake.addEventListener("click", () => {
     isClickShakeEnabled = !isClickShakeEnabled;
@@ -1273,9 +1315,6 @@ if (btnToggleClickShake) {
     }
   });
 }
-
-btnDockProxyEdge?.addEventListener("click", () => setProxyMode("edge"));
-btnDockProxyLocal?.addEventListener("click", () => setProxyMode("local"));
 
 // New Tab Button Click '+'
 btnNewTab.addEventListener("click", () => {
