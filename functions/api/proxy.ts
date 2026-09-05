@@ -1,3 +1,5 @@
+import { validateTargetUrl } from "../../src/security/ssrf.ts";
+
 interface Env {}
 
 export const onRequest: PagesFunction<Env> = async (context) => {
@@ -21,18 +23,24 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return new Response("Missing target url parameter", { status: 400 });
   }
 
-  let targetUrl = targetParam.trim();
-  if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
-    targetUrl = "https://" + targetUrl;
+  const validation = validateTargetUrl(targetParam);
+  if (!validation.valid || !validation.parsedUrl) {
+    return new Response(
+      `<!doctype html><html><body style="font-family:system-ui,-apple-system,sans-serif;padding:36px;color:#1e293b;background:#f8fafc;line-height:1.6;">` +
+        `<div style="max-width:600px;margin:0 auto;background:#fff;padding:28px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.06);border:1px solid #e2e8f0;">` +
+        `<h3 style="color:#ef4444;margin-top:0;">🛡️ 目标地址被安全策略拦截 (SSRF Blocked)</h3>` +
+        `<p><strong>目标地址:</strong> <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">${targetParam}</code></p>` +
+        `<p><strong>拦截原因:</strong> ${validation.error || "禁止访问内部网络、本地回环或云元数据网段"}</p>` +
+        `</div></body></html>`,
+      {
+        status: 403,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      },
+    );
   }
 
-  let parsedTarget: URL;
-  try {
-    parsedTarget = new URL(targetUrl);
-  } catch (e: unknown) {
-    const errorMsg = e instanceof Error ? e.message : "Invalid URL";
-    return new Response(`Invalid target URL: ${errorMsg}`, { status: 400 });
-  }
+  const parsedTarget = validation.parsedUrl;
+  const targetUrl = parsedTarget.toString();
 
   const requestHeaders: Record<string, string> = {
     "User-Agent":
@@ -103,6 +111,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       window.parent.postMessage({
         type: 'paper_iframe_mousemove',
         clientX: e.clientX,
+  window.addEventListener('mousemove', function(e) {
+    try {
+      window.parent.postMessage({
+        version: 1,
+        type: 'paper_iframe_mousemove',
+        clientX: e.clientX,
         clientY: e.clientY
       }, '*');
     } catch(_err) {}
@@ -111,6 +125,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   window.addEventListener('pointerdown', function(e) {
     try {
       window.parent.postMessage({
+        version: 1,
         type: 'paper_iframe_click',
         clientX: e.clientX,
         clientY: e.clientY
@@ -123,6 +138,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       e.preventDefault();
       try {
         window.parent.postMessage({
+          version: 1,
           type: 'paper_iframe_zoom',
           deltaY: e.deltaY
         }, '*');
@@ -162,6 +178,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     var isNewTab = targetAttr === '_blank' || e.ctrlKey || e.metaKey;
 
     window.parent.postMessage({
+      version: 1,
       type: isNewTab ? 'paper_new_tab' : 'paper_navigate',
       url: resolvedUrl
     }, '*');
@@ -178,10 +195,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           resolvedUrl = url;
         }
         window.parent.postMessage({
+          version: 1,
           type: 'paper_new_tab',
           url: resolvedUrl
         }, '*');
-      }
       return null;
     };
   } catch(err) {}
