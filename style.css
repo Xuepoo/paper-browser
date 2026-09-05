@@ -2521,3 +2521,27 @@ body {
   color: #1e40af;
   margin-top: 20px;
 }
+
+/* =========================================================
+ * Accessibility: Prefers Reduced Motion Overrides
+ * ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+  .paper-assembly {
+    transition: none !important;
+    transform: none !important;
+  }
+  .paper-shadow {
+    transition: none !important;
+    filter: blur(25px) !important;
+    transform: none !important;
+  }
+  .ambient-glare,
+  .paper-sheen-overlay {
+    display: none !important;
+  }
+  .pulse-indicator,
+  .pulse-amber,
+  .status-indicator-dot {
+    animation: none !important;
+  }
+}
