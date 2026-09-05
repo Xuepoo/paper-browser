@@ -107,27 +107,78 @@
         <div class="dock-divider"></div>
 
         <div class="dock-section">
-          <span class="dock-label">代理网络 (Network Source)</span>
-          <div class="dock-btn-group sub-group">
+          <div class="dock-section-title-row">
+            <span class="dock-label">代理情景 (Switchy)</span>
             <button
-              class="dock-btn active"
-              id="btnDockProxyEdge"
-              title="Cloudflare 边缘代理 (默认免配置)"
+              type="button"
+              class="dock-settings-btn"
+              id="btnOpenProxyModal"
+              title="打开高级网络代理设置"
             >
-              ☁️ 边缘代理
+              ⚙️ 配置
+            </button>
+          </div>
+          <div class="dock-btn-group three-col">
+            <button class="dock-btn active" id="btnDockProxyEdge" title="Cloudflare 边缘代理">
+              ☁️ 边缘
             </button>
             <button
               class="dock-btn"
               id="btnDockProxyLocal"
-              title="本机网络代理 (走本机IP/代理，避免Google验证码)"
+              title="Switchy 代理服务器 (支持 Clash / Mihomo / 局域网)"
             >
-              💻 本地网络
+              🛡️ 代理
             </button>
+            <button class="dock-btn" id="btnDockProxyDirect" title="直连当前浏览器网络 (免代理)">
+              ⚡ 直连
+            </button>
+          </div>
+          <div class="dock-proxy-extra">
+            <div class="dock-clash-header">
+              <span class="dock-sub-lbl" id="dockCurrentProxyLbl">目标: 127.0.0.1:7890</span>
+            </div>
+            <div class="dock-clash-chips" id="dockClashChips">
+              <button
+                type="button"
+                class="dock-chip active"
+                data-scheme="http"
+                data-host="127.0.0.1"
+                data-port="7890"
+              >
+                7890
+              </button>
+              <button
+                type="button"
+                class="dock-chip"
+                data-scheme="http"
+                data-host="127.0.0.1"
+                data-port="7897"
+              >
+                7897
+              </button>
+              <button
+                type="button"
+                class="dock-chip"
+                data-scheme="socks5"
+                data-host="127.0.0.1"
+                data-port="10808"
+              >
+                10808
+              </button>
+              <button
+                type="button"
+                class="dock-chip"
+                data-scheme="socks5"
+                data-host="127.0.0.1"
+                data-port="1080"
+              >
+                1080
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="dock-divider"></div>
-
         <div class="dock-section">
           <span class="dock-label">物理交互 (3D Interaction)</span>
           <div class="dock-btn-grid three-col">
@@ -396,6 +447,173 @@
 
             <!-- Paper Surface Texture Highlight Layer -->
             <div class="paper-sheen-overlay" id="paperSheen"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Global Centered Proxy Settings Modal -->
+      <div class="proxy-modal-backdrop" id="proxyModalBackdrop">
+        <div class="proxy-modal-card" id="proxyModalCard">
+          <div class="modal-header">
+            <div class="modal-header-title">
+              <span class="modal-icon">🌐</span>
+              <strong>网络代理与科学上网设置 (Proxy Settings)</strong>
+            </div>
+            <button type="button" class="modal-close-btn" id="btnCloseProxyModal">✕</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="modal-status-banner">
+              <span class="status-indicator-dot edge" id="modalStatusDot"></span>
+              <span id="modalStatusText">当前出口: <strong>☁️ Cloudflare 边缘代理</strong></span>
+            </div>
+
+            <div class="modal-section-title">选择网页代理出口模式</div>
+            <div class="modal-options-list">
+              <label class="modal-option active" data-mode="edge">
+                <input type="radio" name="modalProxyMode" value="edge" checked />
+                <div class="modal-opt-content">
+                  <div class="modal-opt-title">☁️ Cloudflare 边缘代理 (默认)</div>
+                  <div class="modal-opt-desc">
+                    免配置即开即用，由 Cloudflare 边缘网络转发。适合维基百科、资讯与公开网页。
+                  </div>
+                </div>
+              </label>
+              <label class="modal-option" data-mode="local">
+                <input type="radio" name="modalProxyMode" value="local" />
+                <div class="modal-opt-content">
+                  <div class="modal-opt-title">💻 本机网络代理 (推荐用于 Google / ChatGPT)</div>
+                  <div class="modal-opt-desc">
+                    流量走您本机真实网络与代理客户端（如 Clash/V2Ray），彻底解决 Google
+                    异常流量人机验证与 ChatGPT 机房屏蔽！
+                  </div>
+                  <div class="switchy-profile-card">
+                    <div class="switchy-header">
+                      <span class="switchy-icon">🛡️</span>
+                      <strong>Switchy 代理服务器配置</strong>
+                      <span class="switchy-badge">支持 HTTP / SOCKS5 / 软路由 / 局域网 / 远程</span>
+                    </div>
+
+                    <div class="switchy-table">
+                      <div class="switchy-row header-row">
+                        <span class="col-scheme">协议 (Scheme)</span>
+                        <span class="col-host">服务器 (Server / Host)</span>
+                        <span class="col-port">端口 (Port)</span>
+                      </div>
+                      <div class="switchy-row input-row">
+                        <select id="switchySchemeSelect" class="switchy-select">
+                          <option value="http" selected>HTTP</option>
+                          <option value="socks5">SOCKS5</option>
+                        </select>
+                        <input
+                          type="text"
+                          id="switchyHostInput"
+                          class="switchy-input host-input"
+                          value="127.0.0.1"
+                          placeholder="127.0.0.1 或 局域网IP"
+                        />
+                        <input
+                          type="number"
+                          id="switchyPortInput"
+                          class="switchy-input port-input"
+                          value="7890"
+                          min="1"
+                          max="65535"
+                          placeholder="端口"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="switchy-presets">
+                      <span class="presets-lbl">快捷情景模式:</span>
+                      <button
+                        type="button"
+                        class="switchy-chip active"
+                        data-scheme="http"
+                        data-host="127.0.0.1"
+                        data-port="7890"
+                      >
+                        ⚡ Clash (7890)
+                      </button>
+                      <button
+                        type="button"
+                        class="switchy-chip"
+                        data-scheme="http"
+                        data-host="127.0.0.1"
+                        data-port="7897"
+                      >
+                        🌊 Mihomo (7897)
+                      </button>
+                      <button
+                        type="button"
+                        class="switchy-chip"
+                        data-scheme="socks5"
+                        data-host="127.0.0.1"
+                        data-port="10808"
+                      >
+                        🚀 v2rayN SOCKS (10808)
+                      </button>
+                      <button
+                        type="button"
+                        class="switchy-chip"
+                        data-scheme="socks5"
+                        data-host="127.0.0.1"
+                        data-port="1080"
+                      >
+                        📦 sing-box / SS (1080)
+                      </button>
+                      <button
+                        type="button"
+                        class="switchy-chip"
+                        data-scheme="http"
+                        data-host="192.168.31.1"
+                        data-port="7890"
+                      >
+                        🏡 软路由 (192.168.x)
+                      </button>
+                    </div>
+
+                    <div class="switchy-preview-row">
+                      <span>生效上游目标:</span>
+                      <code id="switchyPreviewUri">http://127.0.0.1:7890</code>
+                      <span style="flex: 1"></span>
+                      <span style="font-size: 10.5px; color: #94a3b8">本地服务端口:</span>
+                      <input
+                        type="number"
+                        id="modalLocalPortInput"
+                        class="modal-port-input"
+                        value="3000"
+                        min="1000"
+                        max="65535"
+                        style="width: 55px"
+                      />
+                    </div>
+
+                    <div class="modal-cmd-box">
+                      <code id="modalCmdSnippet"
+                        >HTTPS_PROXY=http://127.0.0.1:7890 bun run server</code
+                      >
+                      <button type="button" class="copy-cmd-btn" id="btnModalCopyCmd">
+                        📋 复制启动命令
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </label>
+              <label class="modal-option" data-mode="direct">
+                <input type="radio" name="modalProxyMode" value="direct" />
+                <div class="modal-opt-content">
+                  <div class="modal-opt-title">⚡ 直连模式 (Direct)</div>
+                  <div class="modal-opt-desc">
+                    直接请求原网址，不经过任何反向代理服务（配合 Chrome 扩展 Ignore X-Frame-Options
+                    体验最佳）。
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="modal-confirm-btn" id="btnModalConfirm">确定并应用</button>
           </div>
         </div>
       </div>

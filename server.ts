@@ -68,26 +68,35 @@ const server = serve({
         Referer: parsedTarget.origin,
       };
 
-      // Determine upstream proxy agent (supports ?proxy_port=7897 / 7890 / 1080)
+      // Determine upstream proxy agent (SwitchyOmega architecture: scheme, host, port, or full proxy_agent)
+      const customAgentParam = url.searchParams.get("proxy_agent");
       const proxyPortParam =
         url.searchParams.get("proxy_port") ||
         url.searchParams.get("clash_port") ||
         url.searchParams.get("upstream_port");
-      const customAgentParam = url.searchParams.get("proxy_agent");
+      const proxyHostParam = url.searchParams.get("proxy_host") || "127.0.0.1";
+      const proxySchemeParam = url.searchParams.get("proxy_scheme") || "http";
 
       let activeProxyAgent: string | undefined = PROXY_AGENT;
 
-      if (proxyPortParam) {
+      if (customAgentParam) {
+        if (
+          customAgentParam === "none" ||
+          customAgentParam === "direct" ||
+          customAgentParam === "null"
+        ) {
+          activeProxyAgent = undefined;
+        } else {
+          activeProxyAgent = customAgentParam;
+        }
+      } else if (proxyPortParam) {
         const portNum = parseInt(proxyPortParam, 10);
         if (!isNaN(portNum) && portNum > 0 && portNum <= 65535) {
-          activeProxyAgent = `http://127.0.0.1:${portNum}`;
+          activeProxyAgent = `${proxySchemeParam}://${proxyHostParam}:${portNum}`;
         } else if (proxyPortParam === "none" || proxyPortParam === "direct" || portNum === 0) {
           activeProxyAgent = undefined;
         }
-      } else if (customAgentParam) {
-        activeProxyAgent = customAgentParam;
       }
-
       let upstreamResponse: Response;
 
       if (activeProxyAgent) {
