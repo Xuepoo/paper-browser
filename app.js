@@ -11,8 +11,13 @@
 
 // Proxy Modes: 'edge' (Cloudflare CDN) | 'local' (127.0.0.1:3000 personal net) | 'direct' (raw URL) | 'custom'
 let proxyMode = localStorage.getItem("paper_proxy_mode") || "edge";
+let localProxyPort = localStorage.getItem("paper_local_port") || "3000";
 let customProxyUrl =
-  localStorage.getItem("paper_custom_proxy") || "http://127.0.0.1:3000/api/proxy";
+  localStorage.getItem("paper_custom_proxy") || `http://127.0.0.1:${localProxyPort}/api/proxy`;
+
+function getLocalProxyUrl() {
+  return `http://127.0.0.1:${localProxyPort}/api/proxy`;
+}
 
 function getProxiedUrl(targetUrl) {
   if (!targetUrl) return "";
@@ -20,7 +25,7 @@ function getProxiedUrl(targetUrl) {
     return targetUrl;
   }
   if (proxyMode === "local") {
-    return `http://127.0.0.1:3000/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+    return `${getLocalProxyUrl()}?url=${encodeURIComponent(targetUrl)}`;
   }
   if (proxyMode === "custom" && customProxyUrl) {
     const sep = customProxyUrl.includes("?") ? "&" : "?";
@@ -103,6 +108,11 @@ const proxyDropdown = document.getElementById("proxyDropdown");
 const customProxyInput = document.getElementById("customProxyInput");
 const btnDockProxyEdge = document.getElementById("btnDockProxyEdge");
 const btnDockProxyLocal = document.getElementById("btnDockProxyLocal");
+const inputLocalPort = document.getElementById("inputLocalPort");
+const btnCopyServerCmd = document.getElementById("btnCopyServerCmd");
+const btnToggleClickShake = document.getElementById("btnToggleClickShake");
+const iconClickShake = document.getElementById("iconClickShake");
+const labelClickShake = document.getElementById("labelClickShake");
 
 // Window Traffic Lights
 const ctrlClose = document.querySelector(".ctrl-btn.close");
@@ -124,6 +134,7 @@ let isMaximized = false;
 let isTiltLocked = false;
 let isRipplesEnabled = true;
 let currentPaperScale = 1.0;
+let isClickShakeEnabled = false; // default false: keep page still on clicks
 
 // Zoom State
 let currentZoom = 1.0;
@@ -246,25 +257,20 @@ function syncCanvasDPR() {
 window.addEventListener("resize", syncCanvasDPR);
 
 function triggerPaperClickPhysics(x, y) {
-  if (isMinimized) return;
+  if (!isClickShakeEnabled || isMinimized) return;
 
-  // 1. Natural haptic flutter vibration (physical resonance)
-  flutterAmount = Math.min(flutterAmount + 3.6, 9.0);
+  // Subtle micro-flutter only when enabled by user
+  flutterAmount = Math.min(flutterAmount + 1.4, 3.2);
 
-  // 2. Physical localized indentation: momentary deflection at click quadrant
   if (!isTiltLocked) {
     const cssWidth = paperBrowser.offsetWidth || 980;
     const cssHeight = paperBrowser.offsetHeight || 620;
     const normDx = (x - cssWidth / 2) / (cssWidth / 2);
     const normDy = (y - cssHeight / 2) / (cssHeight / 2);
 
-    targetRotY += normDx * 1.6;
-    targetRotX -= normDy * 1.4;
+    targetRotY += normDx * 0.7;
+    targetRotX -= normDy * 0.5;
   }
-
-  // 3. Tactile depth pulse (pressing down into the desk plane)
-  currentZ = Math.max(-12, currentZ - 5);
-  targetZ = 18;
 }
 
 /**
@@ -978,7 +984,7 @@ async function checkLocalProxyHealth() {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1800);
-    const resp = await fetch("http://127.0.0.1:3000/api/proxy?url=https://example.com", {
+    const resp = await fetch(`${getLocalProxyUrl()}?url=https://example.com`, {
       method: "HEAD",
       signal: controller.signal,
     });
@@ -1010,19 +1016,18 @@ function renderProxyStatusIndicator() {
       proxyPill.classList.add("mode-local-ok");
       if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot online";
       if (proxyStatusTag) proxyStatusTag.textContent = "已连接";
-      proxyPill.title = "本机网络 (127.0.0.1:3000): 正常连接中";
+      proxyPill.title = `本机网络 (127.0.0.1:${localProxyPort}): 正常连接中`;
     } else {
       proxyPill.classList.add("mode-local-err");
       if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot offline";
       if (proxyStatusTag) proxyStatusTag.textContent = "未启动";
-      proxyPill.title =
-        "本机 3000 服务未响应或被浏览器 HTTPS 拦截。请执行 bun run server 或切换直连模式。";
+      proxyPill.title = `本机 ${localProxyPort} 端口未响应或被浏览器 HTTPS 拦截。请执行 bun run server 或切换直连模式。`;
     }
   } else if (proxyMode === "direct") {
     proxyPill.classList.add("mode-direct");
     if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot direct";
     if (proxyStatusTag) proxyStatusTag.textContent = "直连模式";
-    proxyPill.title = "直连模式: 直接在 iframe 渲染，走当前浏览器网络和环境";
+    proxyPill.title = "直连模式: 网页直接在 iframe 渲染，走当前浏览器网络和环境";
   } else if (proxyMode === "custom") {
     proxyPill.classList.add("mode-edge");
     if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot edge";
@@ -1156,6 +1161,55 @@ if (customProxyInput) {
     localStorage.setItem("paper_custom_proxy", customProxyUrl);
     if (proxyMode === "custom") {
       setProxyMode("custom");
+    }
+  });
+}
+
+// Local Port & Clash Command Listeners
+if (inputLocalPort) {
+  inputLocalPort.value = localProxyPort;
+  inputLocalPort.addEventListener("change", (e) => {
+    const val = e.target.value.trim();
+    if (val && !isNaN(val)) {
+      localProxyPort = val;
+      localStorage.setItem("paper_local_port", localProxyPort);
+      if (proxyMode === "local") {
+        checkLocalProxyHealth();
+        const activeTab = tabsList.find((t) => t.id === activeTabId);
+        if (activeTab && !activeTab.isNewTab && activeTab.url) {
+          navigateTab(activeTab.id, activeTab.url, false);
+        }
+      }
+    }
+  });
+}
+
+if (btnCopyServerCmd) {
+  btnCopyServerCmd.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText("HTTPS_PROXY=http://127.0.0.1:7890 bun run server");
+      btnCopyServerCmd.textContent = "✓ 已复制!";
+      setTimeout(() => {
+        btnCopyServerCmd.textContent = "📋 复制";
+      }, 2000);
+    } catch {
+      btnCopyServerCmd.textContent = "请手动复制";
+    }
+  });
+}
+
+if (btnToggleClickShake) {
+  btnToggleClickShake.addEventListener("click", () => {
+    isClickShakeEnabled = !isClickShakeEnabled;
+    btnToggleClickShake.classList.toggle("active", isClickShakeEnabled);
+    if (iconClickShake && labelClickShake) {
+      if (isClickShakeEnabled) {
+        iconClickShake.textContent = "📳";
+        labelClickShake.textContent = "振颤开启";
+      } else {
+        iconClickShake.textContent = "🔇";
+        labelClickShake.textContent = "静止模式";
+      }
     }
   });
 }
