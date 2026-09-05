@@ -28,39 +28,31 @@
 
 ---
 
-## 🏛️ Architecture (系统架构)
+## 🏛️ Architecture & Dual Surface (系统架构与双后端)
+
+Paper Browser 采用清晰解耦的**双后端渲染架构 (Dual Surface Architecture)**：
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                    Browser Client (前端)                    │
-│  - 3D Spatial Stage (CSS 3D perspective / matrix3d)         │
-│  - Ink Canvas (HTML5 Canvas 2D / fluid particle ripples)    │
-│  - Paper Assembly & Iframe Container                        │
-│  - PostMessage Bridge (Mouse / Click / Scroll / Navigation) │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-            HTTP Request via /api/proxy?url=...
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│             Cloudflare Edge Proxy (边缘反向代理)             │
-│  - Option A: Cloudflare Pages Functions (functions/api)     │
-│  - Option B: Cloudflare Worker (worker/index.ts)            │
-│  - Option C: Local Bun Server (server.ts)                   │
-│                                                             │
-│  Tasks:                                                     │
-│    1. Header normalization & browser impersonation          │
-│    2. Strip frame-busting headers (X-Frame-Options, CSP)    │
-│    3. Inject <base href="..."> & paper bridge script        │
-│    4. CORS streaming for assets (CSS, JS, images, fonts)    │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Target Public Websites                    │
-│            (Wikipedia, Hacker News, W3C, etc.)              │
-└─────────────────────────────────────────────────────────────┘
+                         Paper Browser Core
+                                 │
+                       BrowserSurface 接口规范
+                                 │
+                ┌────────────────┴────────────────┐
+                │                                 │
+                ▼                                 ▼
+         IframeSurface                   HtmlCanvasSurface
+                │                                 │
+      (外部公共网页沙箱渲染)             (WICG 原生画布置入实验)
+                │                                 │
+     Proxy Layer / Direct Mode             layoutsubtree
+                │                                 │
+           CSS 3D 矩阵变换               ctx.drawElementImage()
 ```
+
+### 核心架构与安全文档
+
+- 🛡️ [安全架构与只读边界规范 (docs/security.md)](docs/security.md) — 详述 SSRF 防护规则、PostMessage 鉴权协议与非凭据输入安全模型。
+- 📊 [浏览器语义与技术兼容性支持矩阵 (docs/compatibility.md)](docs/compatibility.md) — 详述跳转、表单、SPA 路由、缩放、多标签在不同渲染后端下的行为对照。
 
 ---
 

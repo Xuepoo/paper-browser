@@ -281,6 +281,48 @@ export async function handleProxyCore(options: ProxyRequestOptions): Promise<Res
     };
   } catch(err) {}
 
+  // Intercept SPA pushState, replaceState, and popstate to sync location and title
+  try {
+    var origPushState = history.pushState;
+    history.pushState = function() {
+      var ret = origPushState.apply(this, arguments);
+      try {
+        window.parent.postMessage({
+          version: 1,
+          type: 'paper_location_change',
+          url: window.location.href,
+          title: document.title
+        }, '*');
+      } catch(e) {}
+      return ret;
+    };
+
+    var origReplaceState = history.replaceState;
+    history.replaceState = function() {
+      var ret = origReplaceState.apply(this, arguments);
+      try {
+        window.parent.postMessage({
+          version: 1,
+          type: 'paper_location_change',
+          url: window.location.href,
+          title: document.title
+        }, '*');
+      } catch(e) {}
+      return ret;
+    };
+
+    window.addEventListener('popstate', function() {
+      try {
+        window.parent.postMessage({
+          version: 1,
+          type: 'paper_location_change',
+          url: window.location.href,
+          title: document.title
+        }, '*');
+      } catch(e) {}
+    });
+  } catch(err) {}
+
   document.addEventListener('submit', function(e) {
     var form = e.target;
     if (!form || !form.action) return;
