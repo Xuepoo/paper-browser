@@ -842,7 +842,19 @@ function setupIframeListeners(iframe, tabId) {
 
 // PostMessage Bridge: handles mouse movement, navigation, and zoom inside live iframe
 window.addEventListener("message", (e) => {
-  if (e.data?.type === "paper_iframe_mousemove") {
+  // Protocol & source authentication (P0 Security Boundary)
+  if (!e.data || typeof e.data !== "object" || e.data.version !== 1) {
+    return;
+  }
+
+  const isAuthorizedSource = tabsList.some(
+    (t) => t.paneElement?.querySelector("iframe")?.contentWindow === e.source,
+  );
+  if (!isAuthorizedSource) {
+    return;
+  }
+
+  if (e.data.type === "paper_iframe_mousemove") {
     if (isTiltLocked || isSpaceHeld || isMinimized) return;
     const activeTab = tabsList.find((t) => t.id === activeTabId);
     if (!activeTab || !activeTab.paneElement) return;
