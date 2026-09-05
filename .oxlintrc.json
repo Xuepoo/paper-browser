@@ -1,0 +1,10 @@
+{
+  "categories": {
+    "correctness": "warn"
+  },
+  "rules": {
+    "no-unused-vars": "warn",
+    "no-undef": "off"
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", ".carryctx/**", ".git/**"]
+}

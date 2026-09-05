@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paper Browser: 3D HTML-in-Canvas Floating Paper Experience</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="desktop-workspace">
+      <!-- Top Floating Header -->
+      <header class="top-nav">
+        <div class="brand">
+          <span class="paper-icon">📄</span>
+          <h2>PaperBrowser <span class="tag">HTML-in-Canvas 3D</span></h2>
+        </div>
+
+        <div class="center-instruction">
+          <span class="pulse-indicator"></span>
+          <span>移动鼠标体验 3D 纸张惯性倾角，在倾斜的纸上直接点击、切换标签与打字</span>
+        </div>
+
+        <div class="nav-actions">
+          <div class="status-indicator" id="statusBadge">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText">Detecting WICG Engine...</span>
+          </div>
+          <button id="btnResetAngle" class="pill-btn">角度回正 (Space)</button>
+        </div>
+      </header>
+
+      <!-- Main 3D Spatial Canvas Scene -->
+      <div class="spatial-stage" id="spatialStage">
+        <!-- Ambient light reflection following cursor -->
+        <div class="ambient-glare" id="ambientGlare"></div>
+
+        <!-- 3D Transform Wrapper for the Sheet of Paper -->
+        <div class="paper-assembly" id="paperAssembly">
+          <!-- Physical paper drop shadow on the desk -->
+          <div class="paper-shadow" id="paperShadow"></div>
+
+          <!-- Live Interactive Web Browser (3D Spatial Paper Plane) -->
+          <div id="paperBrowser" class="paper-browser-window">
+            <!-- Canvas Layer for Dynamic Paper Texture & Interactive Fluid Ink Ripples -->
+            <canvas id="paperCanvas" width="920" height="580" class="paper-ink-canvas"></canvas>
+
+            <!-- Window Titlebar & Tabs -->
+            <div class="browser-header">
+              <!-- Window Traffic Lights -->
+              <div class="window-controls">
+                <span class="ctrl-btn close" title="Close / Flutter"></span>
+                <span class="ctrl-btn min" title="Minimize"></span>
+                <span class="ctrl-btn max" title="Maximize"></span>
+              </div>
+
+              <!-- Dynamic Browser Tabs Bar -->
+              <div class="tabs-scroll-wrap">
+                <div class="browser-tabs" id="tabsBar">
+                  <!-- Generated dynamically in app.js -->
+                </div>
+                <button class="btn-new-tab" id="btnNewTab" title="新建标签页 (Ctrl+T)">+</button>
+              </div>
+
+              <div class="window-spacer"></div>
+            </div>
+
+            <!-- Browser Navigation & URL Toolbar -->
+            <div class="browser-toolbar">
+              <div class="nav-buttons">
+                <button class="nav-btn" id="btnBack" title="后退 (Alt+←)">←</button>
+                <button class="nav-btn" id="btnForward" title="前进 (Alt+→)">→</button>
+                <button class="nav-btn" id="btnReload" title="刷新 (纸张振颤)">↻</button>
+                <button class="nav-btn" id="btnHome" title="新标签页主页">⌂</button>
+              </div>
+
+              <div class="address-bar-wrap">
+                <span class="security-lock" id="sslLock">🔒</span>
+                <input
+                  type="text"
+                  id="urlInput"
+                  class="address-input"
+                  value="https://en.wikipedia.org/wiki/Paper"
+                  spellcheck="false"
+                  placeholder="在 3D 纸张上输入网址或搜索关键词..."
+                />
+                <span class="url-action-btn" id="btnGoUrl">↵</span>
+              </div>
+
+              <div class="toolbar-tools">
+                <!-- DPR & Zoom Scaler -->
+                <div class="zoom-pill" id="zoomPill" title="页面缩放 (Zoom / DPR 调整)">
+                  <button class="zoom-btn" id="btnZoomOut" title="缩小 (−)">−</button>
+                  <span class="zoom-val" id="zoomLabel">100%</span>
+                  <button class="zoom-btn" id="btnZoomIn" title="放大 (+)">+</button>
+                </div>
+                <div
+                  class="dpr-badge"
+                  id="dprBadge"
+                  title="当前屏幕设备像素比 (Device Pixel Ratio)"
+                >
+                  DPR: <span id="dprValue">1x</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Browser Web Content Viewport -->
+            <div class="browser-viewport" id="browserViewport">
+              <div class="browser-progress-bar" id="browserProgressBar"></div>
+              <!-- Dynamic Tab Views Container -->
+              <div class="tabs-container" id="tabsContainer">
+                <!-- Tab views (iframes or new tab pages) mounted dynamically here -->
+              </div>
+            </div>
+
+            <!-- Paper Surface Texture Highlight Layer -->
+            <div class="paper-sheen-overlay" id="paperSheen"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Spatial Floating Telemetry -->
+      <footer class="bottom-telemetry">
+        <div class="telemetry-bar">
+          <div class="tel-col">
+            <span class="lbl">纸张空间俯仰 (Pitch / Roll):</span>
+            <span class="val" id="valAngles">0.0° / 0.0°</span>
+          </div>
+          <div class="tel-divider"></div>
+          <div class="tel-col">
+            <span class="lbl">实时光影坐标:</span>
+            <span class="val" id="valLight">X: 0px, Y: 0px</span>
+          </div>
+          <div class="tel-divider"></div>
+          <div class="tel-col">
+            <span class="lbl">渲染引擎:</span>
+            <span class="val accent" id="valEngine">3D Paper + Live Web</span>
+          </div>
+          <div class="tel-divider"></div>
+          <div class="tel-col">
+            <span class="lbl">活动标签:</span>
+            <span class="val" id="valTabs">1</span>
+          </div>
+          <div class="tel-divider"></div>
+          <div class="tel-col">
+            <span class="lbl">DPR / 缩放:</span>
+            <span class="val accent" id="valZoom">100%</span>
+          </div>
+          <div class="tel-divider"></div>
+          <div class="tel-col">
+            <span class="lbl">FPS:</span>
+            <span class="val" id="valFps">60</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
