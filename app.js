@@ -51,6 +51,25 @@ const btnZoomIn = document.getElementById("btnZoomIn");
 const zoomLabel = document.getElementById("zoomLabel");
 const dprValue = document.getElementById("dprValue");
 
+// Banner & Quick Control Dock Elements
+const experimentBanner = document.getElementById("experimentBanner");
+const btnCopyFlag = document.getElementById("btnCopyFlag");
+const btnCloseBanner = document.getElementById("btnCloseBanner");
+
+const btnSizeCompact = document.getElementById("btnSizeCompact");
+const btnSizeStandard = document.getElementById("btnSizeStandard");
+const btnSizeWide = document.getElementById("btnSizeWide");
+const btnSizeUltra = document.getElementById("btnSizeUltra");
+const btnZoomPaperIn = document.getElementById("btnZoomPaperIn");
+const btnZoomPaperOut = document.getElementById("btnZoomPaperOut");
+
+const btnToggleTiltLock = document.getElementById("btnToggleTiltLock");
+const iconTiltLock = document.getElementById("iconTiltLock");
+const labelTiltLock = document.getElementById("labelTiltLock");
+const btnToggleRipples = document.getElementById("btnToggleRipples");
+const controlDock = document.getElementById("controlDock");
+const btnCollapseDock = document.getElementById("btnCollapseDock");
+
 // Window Traffic Lights
 const ctrlClose = document.querySelector(".ctrl-btn.close");
 const ctrlMin = document.querySelector(".ctrl-btn.min");
@@ -67,6 +86,10 @@ let flutterAmount = 0;
 let isSpaceHeld = false;
 let isMinimized = false;
 let isMaximized = false;
+
+let isTiltLocked = false;
+let isRipplesEnabled = true;
+let currentPaperScale = 1.0;
 
 // Zoom State
 let currentZoom = 1.0;
@@ -121,7 +144,7 @@ function updatePaperPhysics() {
 
 // Track mouse on spatial stage
 spatialStage.addEventListener("mousemove", (e) => {
-  if (isSpaceHeld || isMinimized) return;
+  if (isTiltLocked || isSpaceHeld || isMinimized) return;
 
   const rect = spatialStage.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
@@ -174,8 +197,8 @@ function syncCanvasDPR() {
   const dpr = window.devicePixelRatio || 1;
   dprValue.textContent = dpr % 1 === 0 ? `${dpr}x` : `${dpr.toFixed(1)}x`;
 
-  const cssWidth = isMaximized ? 1160 : 920;
-  const cssHeight = isMaximized ? 680 : 580;
+  const cssWidth = paperBrowser.offsetWidth || 980;
+  const cssHeight = paperBrowser.offsetHeight || 620;
 
   paperCanvas.width = Math.round(cssWidth * dpr);
   paperCanvas.height = Math.round(cssHeight * dpr);
@@ -192,6 +215,7 @@ window.addEventListener("resize", syncCanvasDPR);
  * 5. Canvas Dynamic Fluid Ink Ripples System
  */
 function addRipple(x, y, color = "#38bdf8") {
+  if (!isRipplesEnabled) return;
   ripples.push({
     x,
     y,
@@ -204,17 +228,19 @@ function addRipple(x, y, color = "#38bdf8") {
 }
 
 paperBrowser.addEventListener("pointerdown", (e) => {
-  const rect = paperCanvas.getBoundingClientRect();
+  if (e.target.closest(".browser-header") || e.target.closest(".browser-toolbar")) {
+    return;
+  }
+  const rect = paperBrowser.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   addRipple(x, y);
 });
 
 function renderCanvasEffects() {
-  const cssWidth = isMaximized ? 1160 : 920;
-  const cssHeight = isMaximized ? 680 : 580;
+  const cssWidth = paperBrowser.offsetWidth || 980;
+  const cssHeight = paperBrowser.offsetHeight || 620;
   ctx.clearRect(0, 0, cssWidth, cssHeight);
-
   // Update and draw active ripples
   for (let i = ripples.length - 1; i >= 0; i--) {
     const r = ripples[i];
@@ -699,7 +725,7 @@ function setupIframeListeners(iframe, tabId) {
 // PostMessage Bridge: handles mouse movement, navigation, and zoom inside live iframe
 window.addEventListener("message", (e) => {
   if (e.data?.type === "paper_iframe_mousemove") {
-    if (isSpaceHeld || isMinimized) return;
+    if (isTiltLocked || isSpaceHeld || isMinimized) return;
     const activeTab = tabsList.find((t) => t.id === activeTabId);
     if (!activeTab || !activeTab.paneElement) return;
 
@@ -745,6 +771,101 @@ window.addEventListener("message", (e) => {
     }
   }
 });
+
+// Banner & Quick Control Dock Listeners
+if (btnCopyFlag) {
+  btnCopyFlag.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText("chrome://flags/#canvas-draw-element");
+      btnCopyFlag.textContent = "✓ 已复制!";
+      setTimeout(() => {
+        btnCopyFlag.textContent = "📋 复制 Flag 地址";
+      }, 2200);
+    } catch {
+      btnCopyFlag.textContent = "chrome://flags/#canvas-draw-element";
+    }
+  });
+}
+
+if (btnCloseBanner) {
+  btnCloseBanner.addEventListener("click", () => {
+    experimentBanner?.classList.add("collapsed");
+  });
+}
+
+function setPaperSize(sizeClass) {
+  paperAssembly.classList.remove("size-compact", "size-standard", "size-wide", "size-ultra");
+  if (sizeClass) {
+    paperAssembly.classList.add(sizeClass);
+  }
+
+  [btnSizeCompact, btnSizeStandard, btnSizeWide, btnSizeUltra].forEach((btn) => {
+    if (btn) btn.classList.remove("active");
+  });
+
+  if (sizeClass === "size-compact") btnSizeCompact?.classList.add("active");
+  else if (sizeClass === "size-wide") btnSizeWide?.classList.add("active");
+  else if (sizeClass === "size-ultra") btnSizeUltra?.classList.add("active");
+  else btnSizeStandard?.classList.add("active");
+
+  setTimeout(syncCanvasDPR, 50);
+}
+
+btnSizeCompact?.addEventListener("click", () => setPaperSize("size-compact"));
+btnSizeStandard?.addEventListener("click", () => setPaperSize("size-standard"));
+btnSizeWide?.addEventListener("click", () => setPaperSize("size-wide"));
+btnSizeUltra?.addEventListener("click", () => setPaperSize("size-ultra"));
+
+btnZoomPaperIn?.addEventListener("click", () => {
+  currentPaperScale = Math.min(1.35, currentPaperScale + 0.1);
+  paperAssembly.style.setProperty("--paper-width", `${Math.round(980 * currentPaperScale)}px`);
+  paperAssembly.style.setProperty("--paper-height", `${Math.round(620 * currentPaperScale)}px`);
+  setTimeout(syncCanvasDPR, 50);
+});
+
+btnZoomPaperOut?.addEventListener("click", () => {
+  currentPaperScale = Math.max(0.7, currentPaperScale - 0.1);
+  paperAssembly.style.setProperty("--paper-width", `${Math.round(980 * currentPaperScale)}px`);
+  paperAssembly.style.setProperty("--paper-height", `${Math.round(620 * currentPaperScale)}px`);
+  setTimeout(syncCanvasDPR, 50);
+});
+
+btnToggleTiltLock?.addEventListener("click", () => {
+  isTiltLocked = !isTiltLocked;
+  btnToggleTiltLock.classList.toggle("active", isTiltLocked);
+  if (isTiltLocked) {
+    targetRotX = 0;
+    targetRotY = 0;
+    targetZ = 0;
+    if (iconTiltLock) iconTiltLock.textContent = "🔒";
+    if (labelTiltLock) labelTiltLock.textContent = "纸面已锁定";
+  } else {
+    if (iconTiltLock) iconTiltLock.textContent = "🔓";
+    if (labelTiltLock) labelTiltLock.textContent = "自由倾斜";
+  }
+});
+
+btnToggleRipples?.addEventListener("click", () => {
+  isRipplesEnabled = !isRipplesEnabled;
+  btnToggleRipples.classList.toggle("active", isRipplesEnabled);
+});
+
+if (btnCollapseDock && controlDock) {
+  btnCollapseDock.addEventListener("click", (e) => {
+    e.stopPropagation();
+    controlDock.classList.toggle("collapsed");
+    btnCollapseDock.title = controlDock.classList.contains("collapsed")
+      ? "展开控制面板"
+      : "收起控制面板";
+  });
+
+  controlDock.addEventListener("click", () => {
+    if (controlDock.classList.contains("collapsed")) {
+      controlDock.classList.remove("collapsed");
+      btnCollapseDock.title = "收起控制面板";
+    }
+  });
+}
 
 // New Tab Button Click '+'
 btnNewTab.addEventListener("click", () => {

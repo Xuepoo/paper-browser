@@ -26,10 +26,128 @@
             <span id="statusText">Detecting WICG Engine...</span>
           </div>
           <button id="btnResetAngle" class="pill-btn">角度回正 (Space)</button>
+          <a
+            href="https://github.com/Xuepoo/paper-browser"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="pill-btn github-btn"
+            title="查看 GitHub 开源仓库"
+          >
+            <svg
+              height="14"
+              width="14"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              style="vertical-align: text-bottom; margin-right: 4px"
+            >
+              <path
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+              ></path>
+            </svg>
+            <span>GitHub</span>
+          </a>
         </div>
       </header>
+      <!-- Experimental Engine Notice Banner -->
+      <div class="experiment-banner" id="experimentBanner">
+        <div class="banner-inner">
+          <div class="banner-tag">
+            <span class="pulse-amber"></span>
+            <strong>WICG 规范与实验特性</strong>
+          </div>
+          <p class="banner-text">
+            本项目基于最新的 WICG
+            <strong>HTML-in-Canvas</strong> 原生渲染提案。为获得最佳硬件加速与原生物理渲染，建议使用
+            <strong>Chrome 130+</strong>（推荐 Canary / Dev 分支），并在
+            <code>chrome://flags/#canvas-draw-element</code>（或
+            <code>#enable-experimental-web-platform-features</code
+            >）开启对应实验选项。在普通现代浏览器下，系统将自动由 3D 空间纸张模拟层兼容运行。
+          </p>
+          <div class="banner-actions">
+            <button class="banner-btn" id="btnCopyFlag" title="复制实验 Flag 网址至剪贴板">
+              📋 复制 Flag 地址
+            </button>
+            <button class="banner-btn secondary" id="btnCloseBanner" title="收起提醒">
+              ✕ 收起
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Main 3D Spatial Canvas Scene -->
+      <!-- Floating Quick Control Dock -->
+      <aside class="floating-control-dock" id="controlDock" aria-label="纸张控制面板">
+        <div class="dock-header">
+          <div class="dock-header-left">
+            <span class="dock-icon">⚙️</span>
+            <span class="dock-title">纸张控制</span>
+          </div>
+          <button class="dock-collapse-toggle" id="btnCollapseDock" title="收起控制面板">◀</button>
+        </div>
+
+        <div class="dock-section">
+          <span class="dock-label">纸张尺寸 (Paper Size)</span>
+          <div class="dock-btn-group">
+            <button class="dock-btn" id="btnSizeCompact" title="紧凑尺寸 (840×540)">紧凑</button>
+            <button class="dock-btn active" id="btnSizeStandard" title="标准尺寸 (980×620)">
+              标准
+            </button>
+            <button class="dock-btn" id="btnSizeWide" title="宽屏大视野 (1180×720)">宽屏</button>
+            <button class="dock-btn" id="btnSizeUltra" title="超大巨幕 (1360×840)">巨幕</button>
+          </div>
+          <div class="dock-btn-group sub-group">
+            <button class="dock-btn small" id="btnZoomPaperOut" title="等比缩小纸张 (−10%)">
+              🔍 缩小纸面
+            </button>
+            <button class="dock-btn small" id="btnZoomPaperIn" title="等比放大纸张 (+10%)">
+              🔍 放大纸面
+            </button>
+          </div>
+        </div>
+
+        <div class="dock-divider"></div>
+
+        <div class="dock-section">
+          <span class="dock-label">物理交互 (3D Interaction)</span>
+          <div class="dock-btn-grid">
+            <button
+              class="dock-toggle-btn"
+              id="btnToggleTiltLock"
+              title="锁定纸面倾角，避免阅读长文时抖动"
+            >
+              <span class="toggle-icon" id="iconTiltLock">🔓</span>
+              <span id="labelTiltLock">自由倾斜</span>
+            </button>
+            <button
+              class="dock-toggle-btn active"
+              id="btnToggleRipples"
+              title="开关点击时的水墨微澜扩散动效"
+            >
+              <span class="toggle-icon">💧</span>
+              <span>水墨涟漪</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="dock-divider"></div>
+
+        <div class="dock-section">
+          <a
+            href="https://github.com/Xuepoo/paper-browser"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="dock-link-btn"
+            title="查看 GitHub 开源仓库"
+          >
+            <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor">
+              <path
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+              ></path>
+            </svg>
+            <span>GitHub 源码仓库</span>
+          </a>
+        </div>
+      </aside>
       <div class="spatial-stage" id="spatialStage">
         <!-- Ambient light reflection following cursor -->
         <div class="ambient-glare" id="ambientGlare"></div>
