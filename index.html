@@ -228,12 +228,14 @@
               <div class="toolbar-tools">
                 <!-- Network Proxy Selector Pill & Dropdown -->
                 <div
-                  class="proxy-pill"
+                  class="proxy-pill mode-edge"
                   id="proxyPill"
-                  title="切换代理网络源（走本机IP可绕过Google/ChatGPT机房拦截）"
+                  title="网络代理源状态与设置 (点击展开切换)"
                 >
+                  <span class="status-indicator-dot edge" id="proxyStatusDot"></span>
                   <span class="proxy-icon" id="proxyPillIcon">☁️</span>
                   <span class="proxy-label" id="proxyPillLabel">边缘代理</span>
+                  <span class="proxy-status-tag" id="proxyStatusTag">就绪</span>
                   <span class="proxy-arrow">▾</span>
                 </div>
                 <div class="proxy-dropdown" id="proxyDropdown">

@@ -28,6 +28,12 @@ function getProxiedUrl(targetUrl) {
   }
   return `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
 }
+function getSandboxAttr() {
+  if (proxyMode === "direct") {
+    return "";
+  }
+  return 'sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-popups-to-escape-sandbox"';
+}
 
 // 1. DOM Elements
 const paperCanvas = document.getElementById("paperCanvas");
@@ -91,6 +97,8 @@ const btnCollapseDock = document.getElementById("btnCollapseDock");
 const proxyPill = document.getElementById("proxyPill");
 const proxyPillIcon = document.getElementById("proxyPillIcon");
 const proxyPillLabel = document.getElementById("proxyPillLabel");
+const proxyStatusDot = document.getElementById("proxyStatusDot");
+const proxyStatusTag = document.getElementById("proxyStatusTag");
 const proxyDropdown = document.getElementById("proxyDropdown");
 const customProxyInput = document.getElementById("customProxyInput");
 const btnDockProxyEdge = document.getElementById("btnDockProxyEdge");
@@ -608,7 +616,7 @@ function createTab(url = null, title = "新标签页", activate = true) {
       <iframe
         class="live-web-iframe"
         src="${getProxiedUrl(url)}"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        ${getSandboxAttr()}
         title="Paper Browser Frame ${tabId}"
       ></iframe>
     `;
@@ -720,7 +728,7 @@ function navigateTab(tabId, rawInput, pushHistory = true) {
       <iframe
         class="live-web-iframe"
         src="${getProxiedUrl(finalUrl)}"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        ${getSandboxAttr()}
         title="Paper Browser Frame ${tabId}"
       ></iframe>
     `;
@@ -963,6 +971,72 @@ if (btnCollapseDock && controlDock) {
   });
 }
 
+let localProxyHealth = "unknown";
+
+async function checkLocalProxyHealth() {
+  if (proxyMode !== "local") return;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1800);
+    const resp = await fetch("http://127.0.0.1:3000/api/proxy?url=https://example.com", {
+      method: "HEAD",
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (resp.ok || resp.status === 200 || resp.status === 204) {
+      localProxyHealth = "online";
+    } else {
+      localProxyHealth = "offline";
+    }
+  } catch {
+    localProxyHealth = "offline";
+  }
+  renderProxyStatusIndicator();
+}
+
+function renderProxyStatusIndicator() {
+  if (!proxyPill) return;
+
+  proxyPill.classList.remove(
+    "mode-edge",
+    "mode-local-ok",
+    "mode-local-err",
+    "mode-direct",
+    "mode-custom",
+  );
+
+  if (proxyMode === "local") {
+    if (localProxyHealth === "online") {
+      proxyPill.classList.add("mode-local-ok");
+      if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot online";
+      if (proxyStatusTag) proxyStatusTag.textContent = "已连接";
+      proxyPill.title = "本机网络 (127.0.0.1:3000): 正常连接中";
+    } else {
+      proxyPill.classList.add("mode-local-err");
+      if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot offline";
+      if (proxyStatusTag) proxyStatusTag.textContent = "未启动";
+      proxyPill.title =
+        "本机 3000 服务未响应或被浏览器 HTTPS 拦截。请执行 bun run server 或切换直连模式。";
+    }
+  } else if (proxyMode === "direct") {
+    proxyPill.classList.add("mode-direct");
+    if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot direct";
+    if (proxyStatusTag) proxyStatusTag.textContent = "直连模式";
+    proxyPill.title = "直连模式: 直接在 iframe 渲染，走当前浏览器网络和环境";
+  } else if (proxyMode === "custom") {
+    proxyPill.classList.add("mode-edge");
+    if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot edge";
+    if (proxyStatusTag) proxyStatusTag.textContent = "自定义";
+    proxyPill.title = `自定义代理: ${customProxyUrl}`;
+  } else {
+    // edge
+    proxyPill.classList.add("mode-edge");
+    if (proxyStatusDot) proxyStatusDot.className = "status-indicator-dot edge";
+    if (proxyStatusTag) proxyStatusTag.textContent = "边缘就绪";
+    proxyPill.title = "Cloudflare 边缘代理: 默认模式，免配置可用";
+  }
+}
+
 function updateProxyUI() {
   const isEdge = proxyMode === "edge";
   const isLocal = proxyMode === "local";
@@ -985,6 +1059,11 @@ function updateProxyUI() {
     }
   }
 
+  renderProxyStatusIndicator();
+  if (isLocal) {
+    checkLocalProxyHealth();
+  }
+
   btnDockProxyEdge?.classList.toggle("active", isEdge);
   btnDockProxyLocal?.classList.toggle("active", isLocal);
 
@@ -1002,7 +1081,7 @@ function updateProxyUI() {
         "当前出口: <strong>💻 本地电脑网络 (127.0.0.1:3000)</strong> — 走本机真实IP/代理，已避开机房拦截";
     } else if (isDirect) {
       statusEl.innerHTML =
-        "当前出口: <strong>⚡ 直连模式 (Direct)</strong> — 直接在 iframe 中加载目标网页";
+        "当前出口: <strong>⚡ 直连模式 (Direct)</strong> — 直接在 iframe 中加载目标网页，免代理";
     } else if (isCustom) {
       statusEl.innerHTML = `当前出口: <strong>⚙️ 自定义代理</strong> (${customProxyUrl})`;
     } else {
@@ -1013,6 +1092,20 @@ function updateProxyUI() {
 }
 
 function setProxyMode(newMode) {
+  if (newMode === "local" && window.location.protocol === "https:") {
+    const switchToDirect = confirm(
+      "⚠️ 浏览器安全策略提示 (Mixed Content):\n\n" +
+        "当前页面运行在公网 HTTPS (https://browser.xuepoo.xyz)，现代浏览器安全机制会直接拦截本地未加密的 http://127.0.0.1:3000 (混合内容限制)。\n\n" +
+        "【推荐极简免端口方案】:\n" +
+        "1. 使用「⚡ 直连模式」+ Chrome 扩展 (如 Ignore X-Frame-Options)，免开 3000 端口，直接走本机网络和代理！\n" +
+        "2. 或者在本地运行 `bun run server` 后直接在浏览器访问: http://localhost:3000\n\n" +
+        "点击「确定」自动切换为【⚡ 直连模式】(推荐)，点击「取消」继续尝试本机 3000 端口。",
+    );
+    if (switchToDirect) {
+      newMode = "direct";
+    }
+  }
+
   proxyMode = newMode;
   localStorage.setItem("paper_proxy_mode", proxyMode);
   updateProxyUI();
