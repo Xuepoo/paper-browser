@@ -4,15 +4,16 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["@cloudflare/workers-types"],
+    "types": ["@cloudflare/workers-types", "@types/bun"],
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "allowJs": true,
     "checkJs": false,
     "isolatedModules": true,
     "resolveJsonModule": true
   },
-  "include": ["app.js", "server.ts", "vite.config.ts", "functions/**/*.ts", "worker/**/*.ts"],
+  "include": ["src/**/*.ts", "server.ts", "vite.config.ts", "functions/**/*.ts", "worker/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
