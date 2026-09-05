@@ -16,6 +16,7 @@ export interface PhysicsState {
   isMinimized: boolean;
   isMaximized: boolean;
   isClickShakeEnabled: boolean;
+  pointerActive: boolean;
 }
 
 export class PaperPhysics {
@@ -32,6 +33,7 @@ export class PaperPhysics {
     isMinimized: false,
     isMaximized: false,
     isClickShakeEnabled: false,
+    pointerActive: false,
   };
 
   private assemblyEl: HTMLElement;
@@ -94,10 +96,10 @@ export class PaperPhysics {
   }
 
   setPointer(mouseX: number, mouseY: number, stageWidth: number, stageHeight: number): void {
+    this.state.pointerActive = true;
     if (this.state.isTiltLocked || this.state.isSpaceHeld || this.state.isMinimized) {
       return;
     }
-
     const normX = (mouseX - stageWidth / 2) / (stageWidth / 2);
     const normY = (mouseY - stageHeight / 2) / (stageHeight / 2);
 
@@ -107,11 +109,11 @@ export class PaperPhysics {
   }
 
   resetAngle(): void {
+    this.state.pointerActive = false;
     this.state.targetRotX = 0;
     this.state.targetRotY = 0;
     this.state.targetZ = 0;
   }
-
   triggerClickFlutter(x: number, y: number, width: number, height: number): void {
     if (!this.state.isClickShakeEnabled || this.state.isMinimized) return;
 

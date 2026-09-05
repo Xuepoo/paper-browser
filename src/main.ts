@@ -103,7 +103,18 @@ function syncCanvasDpr(): void {
   ripples.syncDpr(w, h, dpr);
 }
 
-window.addEventListener("resize", syncCanvasDpr);
+if (typeof ResizeObserver !== "undefined") {
+  const observer = new ResizeObserver(() => {
+    syncCanvasDpr();
+    scheduleFrame();
+  });
+  observer.observe(paperBrowser);
+} else {
+  window.addEventListener("resize", () => {
+    syncCanvasDpr();
+    scheduleFrame();
+  });
+}
 
 // Setup Mousemove on 3D Stage
 spatialStage.addEventListener("mousemove", (e) => {
@@ -115,10 +126,12 @@ spatialStage.addEventListener("mousemove", (e) => {
 
   ambientGlare.style.background = `radial-gradient(circle at ${mouseX}px ${mouseY}px, rgba(56, 189, 248, 0.1) 0%, transparent 55%)`;
   valLight.textContent = `X: ${Math.round(mouseX)}px, Y: ${Math.round(mouseY)}px`;
+  scheduleFrame();
 });
 
 spatialStage.addEventListener("mouseleave", () => {
   physics.resetAngle();
+  scheduleFrame();
 });
 
 // Space resets angle
@@ -127,6 +140,7 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     physics.state.isSpaceHeld = true;
     physics.resetAngle();
+    scheduleFrame();
   }
 });
 
@@ -136,7 +150,10 @@ window.addEventListener("keyup", (e) => {
   }
 });
 
-btnResetAngle.addEventListener("click", () => physics.resetAngle());
+btnResetAngle.addEventListener("click", () => {
+  physics.resetAngle();
+  scheduleFrame();
+});
 
 // Click interaction on paper
 paperBrowser.addEventListener("pointerdown", (e) => {
@@ -151,6 +168,7 @@ paperBrowser.addEventListener("pointerdown", (e) => {
   const y = e.clientY - rect.top;
   physics.triggerClickFlutter(x, y, rect.width, rect.height);
   ripples.addRipple(x, y);
+  scheduleFrame();
 });
 
 // PostMessage Bridge Protocol Authentication (P0 Security)
@@ -972,6 +990,14 @@ function escapeHtml(str: string): string {
 // 60 FPS Loop
 let frameCount = 0;
 let lastFpsTime = performance.now();
+let isLoopRunning = false;
+
+export function scheduleFrame(): void {
+  if (!isLoopRunning) {
+    isLoopRunning = true;
+    requestAnimationFrame(animationLoop);
+  }
+}
 
 function animationLoop(timestamp: number): void {
   const phys = physics.update();
@@ -987,6 +1013,13 @@ function animationLoop(timestamp: number): void {
     frameCount = 0;
     lastFpsTime = timestamp;
     valFps.textContent = String(fps);
+  }
+
+  // Idle Power-Saving: if physics is settled, no ripples, and pointer inactive, sleep loop
+  if (phys.isSettled && ripples.activeCount === 0 && !physics.state.pointerActive) {
+    isLoopRunning = false;
+    valFps.textContent = "0 (空闲)";
+    return;
   }
 
   requestAnimationFrame(animationLoop);
@@ -1010,7 +1043,7 @@ function initApp(): void {
     valEngine.textContent = "Iframe Surface";
   }
 
-  requestAnimationFrame(animationLoop);
+  scheduleFrame();
 }
 
 if (document.readyState === "loading") {
