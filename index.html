@@ -104,6 +104,27 @@
             </button>
           </div>
         </div>
+        <div class="dock-divider"></div>
+
+        <div class="dock-section">
+          <span class="dock-label">代理网络 (Network Source)</span>
+          <div class="dock-btn-group sub-group">
+            <button
+              class="dock-btn active"
+              id="btnDockProxyEdge"
+              title="Cloudflare 边缘代理 (默认免配置)"
+            >
+              ☁️ 边缘代理
+            </button>
+            <button
+              class="dock-btn"
+              id="btnDockProxyLocal"
+              title="本机网络代理 (走本机IP/代理，避免Google验证码)"
+            >
+              💻 本地网络
+            </button>
+          </div>
+        </div>
 
         <div class="dock-divider"></div>
 
@@ -205,6 +226,77 @@
               </div>
 
               <div class="toolbar-tools">
+                <!-- Network Proxy Selector Pill & Dropdown -->
+                <div
+                  class="proxy-pill"
+                  id="proxyPill"
+                  title="切换代理网络源（走本机IP可绕过Google/ChatGPT机房拦截）"
+                >
+                  <span class="proxy-icon" id="proxyPillIcon">☁️</span>
+                  <span class="proxy-label" id="proxyPillLabel">边缘代理</span>
+                  <span class="proxy-arrow">▾</span>
+                </div>
+                <div class="proxy-dropdown" id="proxyDropdown">
+                  <div class="dropdown-header">
+                    <strong>🌐 网络代理源设置</strong>
+                    <span class="dropdown-subtitle">选择目标网页发起的网络出口节点</span>
+                  </div>
+                  <div class="dropdown-options">
+                    <label class="proxy-option active" data-mode="edge">
+                      <input type="radio" name="proxyMode" value="edge" checked />
+                      <div class="option-content">
+                        <div class="option-title">☁️ Cloudflare 边缘代理 (默认)</div>
+                        <div class="option-desc">
+                          免配置即开即用，由 Cloudflare
+                          边缘网络转发。适合大多数维基百科、文档与公开网页。
+                        </div>
+                      </div>
+                    </label>
+                    <label class="proxy-option" data-mode="local">
+                      <input type="radio" name="proxyMode" value="local" />
+                      <div class="option-content">
+                        <div class="option-title">
+                          💻 本机网络 / 本地代理 (推荐用于 Google / ChatGPT)
+                        </div>
+                        <div class="option-desc">
+                          通过
+                          <code>http://127.0.0.1:3000</code>
+                          发起请求，流量走您本机真实网络与代理客户端（如 Clash/V2Ray），彻底解决
+                          Google 异常流量人机验证与 ChatGPT 机房屏蔽！
+                        </div>
+                      </div>
+                    </label>
+                    <label class="proxy-option" data-mode="direct">
+                      <input type="radio" name="proxyMode" value="direct" />
+                      <div class="option-content">
+                        <div class="option-title">⚡ 直连模式 (Direct)</div>
+                        <div class="option-desc">
+                          直接请求原网址，不经过任何反向代理服务（适用于支持同源嵌入或已安装跨域扩展的环境）。
+                        </div>
+                      </div>
+                    </label>
+                    <label class="proxy-option" data-mode="custom">
+                      <input type="radio" name="proxyMode" value="custom" />
+                      <div class="option-content">
+                        <div class="option-title">⚙️ 自定义代理 URL (Custom)</div>
+                        <div class="option-desc">
+                          <input
+                            type="text"
+                            id="customProxyInput"
+                            placeholder="https://your-proxy.example.com/api/proxy"
+                            class="custom-proxy-input"
+                          />
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="dropdown-footer">
+                    <div class="local-tip">
+                      💡 <strong>提示:</strong> 切换为「本机网络」模式时，请在本地终端执行
+                      <code>bun run server</code> 保持本地服务开启。
+                    </div>
+                  </div>
+                </div>
                 <!-- DPR & Zoom Scaler -->
                 <div class="zoom-pill" id="zoomPill" title="页面缩放 (Zoom / DPR 调整)">
                   <button class="zoom-btn" id="btnZoomOut" title="缩小 (−)">−</button>

@@ -21,6 +21,18 @@ const server = serve({
     const url = new URL(req.url);
     let pathname = url.pathname;
 
+    if (req.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "*",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    }
+
     // 1. Web Proxy Endpoint for Real In-Paper Browsing
     if (pathname === "/api/proxy") {
       const targetParam = url.searchParams.get("url");

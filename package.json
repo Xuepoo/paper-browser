@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260905.1",
+    "carryctx": "0.8.1",
     "typescript": "^7.0.2",
     "vite": "^8.2.2"
   }

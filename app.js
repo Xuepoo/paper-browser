@@ -9,7 +9,25 @@
  * - 3D spring tilt physics & interactive fluid canvas ripples
  */
 
-const PROXY_ENDPOINT = window.__PAPER_PROXY_ENDPOINT__ || "/api/proxy";
+// Proxy Modes: 'edge' (Cloudflare CDN) | 'local' (127.0.0.1:3000 personal net) | 'direct' (raw URL) | 'custom'
+let proxyMode = localStorage.getItem("paper_proxy_mode") || "edge";
+let customProxyUrl =
+  localStorage.getItem("paper_custom_proxy") || "http://127.0.0.1:3000/api/proxy";
+
+function getProxiedUrl(targetUrl) {
+  if (!targetUrl) return "";
+  if (proxyMode === "direct") {
+    return targetUrl;
+  }
+  if (proxyMode === "local") {
+    return `http://127.0.0.1:3000/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+  }
+  if (proxyMode === "custom" && customProxyUrl) {
+    const sep = customProxyUrl.includes("?") ? "&" : "?";
+    return `${customProxyUrl}${sep}url=${encodeURIComponent(targetUrl)}`;
+  }
+  return `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+}
 
 // 1. DOM Elements
 const paperCanvas = document.getElementById("paperCanvas");
@@ -69,6 +87,14 @@ const labelTiltLock = document.getElementById("labelTiltLock");
 const btnToggleRipples = document.getElementById("btnToggleRipples");
 const controlDock = document.getElementById("controlDock");
 const btnCollapseDock = document.getElementById("btnCollapseDock");
+// Proxy Selector Elements
+const proxyPill = document.getElementById("proxyPill");
+const proxyPillIcon = document.getElementById("proxyPillIcon");
+const proxyPillLabel = document.getElementById("proxyPillLabel");
+const proxyDropdown = document.getElementById("proxyDropdown");
+const customProxyInput = document.getElementById("customProxyInput");
+const btnDockProxyEdge = document.getElementById("btnDockProxyEdge");
+const btnDockProxyLocal = document.getElementById("btnDockProxyLocal");
 
 // Window Traffic Lights
 const ctrlClose = document.querySelector(".ctrl-btn.close");
@@ -211,19 +237,69 @@ function syncCanvasDPR() {
 
 window.addEventListener("resize", syncCanvasDPR);
 
+function triggerPaperClickPhysics(x, y) {
+  if (isMinimized) return;
+
+  // 1. Natural haptic flutter vibration (physical resonance)
+  flutterAmount = Math.min(flutterAmount + 3.6, 9.0);
+
+  // 2. Physical localized indentation: momentary deflection at click quadrant
+  if (!isTiltLocked) {
+    const cssWidth = paperBrowser.offsetWidth || 980;
+    const cssHeight = paperBrowser.offsetHeight || 620;
+    const normDx = (x - cssWidth / 2) / (cssWidth / 2);
+    const normDy = (y - cssHeight / 2) / (cssHeight / 2);
+
+    targetRotY += normDx * 1.6;
+    targetRotX -= normDy * 1.4;
+  }
+
+  // 3. Tactile depth pulse (pressing down into the desk plane)
+  currentZ = Math.max(-12, currentZ - 5);
+  targetZ = 18;
+}
+
 /**
- * 5. Canvas Dynamic Fluid Ink Ripples System
+ * 5. Canvas Dynamic Fluid Ink Ripples System (Multi-layered Organic Ink Bleed)
  */
 function addRipple(x, y, color = "#38bdf8") {
+  triggerPaperClickPhysics(x, y);
   if (!isRipplesEnabled) return;
+
+  // Layer 1: Fast capillary outer shockwave
   ripples.push({
     x,
     y,
-    radius: 4,
-    maxRadius: 180,
-    alpha: 0.55,
-    speed: 4.8,
+    radius: 3,
+    maxRadius: 220,
+    alpha: 0.65,
+    speed: 5.4,
     color,
+    type: "wave",
+  });
+
+  // Layer 2: Harmonic secondary echo ring
+  ripples.push({
+    x,
+    y,
+    radius: 0,
+    maxRadius: 140,
+    alpha: 0.45,
+    speed: 3.2,
+    color: "#6366f1",
+    type: "echo",
+  });
+
+  // Layer 3: Organic soft ink diffusion bloom (fading watercolor core)
+  ripples.push({
+    x,
+    y,
+    radius: 2,
+    maxRadius: 80,
+    alpha: 0.35,
+    speed: 1.6,
+    color,
+    type: "bloom",
   });
 }
 
@@ -241,39 +317,43 @@ function renderCanvasEffects() {
   const cssWidth = paperBrowser.offsetWidth || 980;
   const cssHeight = paperBrowser.offsetHeight || 620;
   ctx.clearRect(0, 0, cssWidth, cssHeight);
+
   // Update and draw active ripples
   for (let i = ripples.length - 1; i >= 0; i--) {
     const r = ripples[i];
 
     ctx.save();
-    // Primary outer wave ring
-    ctx.beginPath();
-    ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(56, 189, 248, ${r.alpha.toFixed(3)})`;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Secondary inner echo ring
-    if (r.radius > 20) {
+    if (r.type === "bloom") {
+      // Soft radial gradient ink diffusion
+      const grad = ctx.createRadialGradient(r.x, r.y, 0, r.x, r.y, Math.max(8, r.radius));
+      grad.addColorStop(0, `rgba(56, 189, 248, ${(r.alpha * 0.4).toFixed(3)})`);
+      grad.addColorStop(0.6, `rgba(99, 102, 241, ${(r.alpha * 0.18).toFixed(3)})`);
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(r.x, r.y, r.radius * 0.65, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(99, 102, 241, ${(r.alpha * 0.5).toFixed(3)})`;
-      ctx.lineWidth = 1.5;
+      ctx.arc(r.x, r.y, Math.max(8, r.radius), 0, Math.PI * 2);
+      ctx.fill();
+    } else if (r.type === "echo") {
+      // Secondary echo ripple
+      if (r.radius > 10) {
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(99, 102, 241, ${(r.alpha * 0.7).toFixed(3)})`;
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+      }
+    } else {
+      // Primary capillary wave ring
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(56, 189, 248, ${r.alpha.toFixed(3)})`;
+      ctx.lineWidth = 2.4;
       ctx.stroke();
     }
-
-    // Soft core glow
-    const grad = ctx.createRadialGradient(r.x, r.y, 0, r.x, r.y, Math.max(10, r.radius * 0.8));
-    grad.addColorStop(0, `rgba(56, 189, 248, ${(r.alpha * 0.25).toFixed(3)})`);
-    grad.addColorStop(1, "transparent");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(r.x, r.y, Math.max(10, r.radius * 0.8), 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
 
     r.radius += r.speed;
-    r.alpha *= 0.94;
+    r.alpha *= 0.93;
 
     if (r.alpha < 0.01 || r.radius > r.maxRadius) {
       ripples.splice(i, 1);
@@ -446,19 +526,29 @@ function createTab(url = null, title = "新标签页", activate = true) {
           <input type="text" class="newtab-search-input" placeholder="在 3D 纸张上输入网址或搜索关键词..." />
           <button class="newtab-search-submit">进入网络</button>
         </div>
+        <div class="newtab-proxy-status" id="newtabProxyStatus">
+          <!-- Populated by updateProxyUI() -->
+        </div>
         <div class="speeddial-grid">
+          <div class="speeddial-card" data-url="https://www.google.com">
+            <div class="sd-icon">🔍</div>
+            <div class="sd-info">
+              <span class="sd-title">Google 搜索</span>
+              <span class="sd-desc">全球最大搜索引擎 (建议本地网络模式)</span>
+            </div>
+          </div>
           <div class="speeddial-card" data-url="https://en.wikipedia.org/wiki/Paper">
             <div class="sd-icon">📄</div>
             <div class="sd-info">
               <span class="sd-title">维基百科: 纸 (Paper)</span>
-              <span class="sd-desc">探索人类书写载体与纸张物理历史</span>
+              <span class="sd-desc">人类物理书写载体历史与物理特性</span>
             </div>
           </div>
           <div class="speeddial-card" data-url="https://html.duckduckgo.com/html/?q=HTML-in-Canvas">
             <div class="sd-icon">🦆</div>
             <div class="sd-info">
-              <span class="sd-title">DuckDuckGo 全网搜索</span>
-              <span class="sd-desc">极简轻量级真实搜索引擎</span>
+              <span class="sd-title">DuckDuckGo 极简搜索</span>
+              <span class="sd-desc">极简轻量级免人机验证搜索引擎</span>
             </div>
           </div>
           <div class="speeddial-card" data-url="https://news.ycombinator.com">
@@ -473,6 +563,12 @@ function createTab(url = null, title = "新标签页", activate = true) {
             <div class="sd-info">
               <span class="sd-title">WICG Spec 规范文档</span>
               <span class="sd-desc">HTML in Canvas 原生绘制提案说明</span>
+            </div>
+          </div>
+          <div class="speeddial-card" data-url="https://example.com">
+            <div class="sd-info">
+              <span class="sd-title">Example Domain</span>
+              <span class="sd-desc">标准基础连通性测试</span>
             </div>
           </div>
         </div>
@@ -502,6 +598,7 @@ function createTab(url = null, title = "新标签页", activate = true) {
     pane.innerHTML = `
       <div class="quick-bookmarks-strip">
         <span class="bookmarks-label">快速网址:</span>
+        <button class="bookmark-chip" data-url="https://www.google.com">🔍 Google</button>
         <button class="bookmark-chip" data-url="https://en.wikipedia.org/wiki/Paper">📄 维基百科: 纸</button>
         <button class="bookmark-chip" data-url="https://html.duckduckgo.com/html/?q=HTML-in-Canvas">🦆 DuckDuckGo</button>
         <button class="bookmark-chip" data-url="https://news.ycombinator.com">⚡ Hacker News</button>
@@ -510,7 +607,7 @@ function createTab(url = null, title = "新标签页", activate = true) {
       </div>
       <iframe
         class="live-web-iframe"
-        src="${PROXY_ENDPOINT}?url=${encodeURIComponent(url)}"
+        src="${getProxiedUrl(url)}"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         title="Paper Browser Frame ${tabId}"
       ></iframe>
@@ -613,6 +710,7 @@ function navigateTab(tabId, rawInput, pushHistory = true) {
     tabData.paneElement.innerHTML = `
       <div class="quick-bookmarks-strip">
         <span class="bookmarks-label">快速网址:</span>
+        <button class="bookmark-chip" data-url="https://www.google.com">🔍 Google</button>
         <button class="bookmark-chip" data-url="https://en.wikipedia.org/wiki/Paper">📄 维基百科: 纸</button>
         <button class="bookmark-chip" data-url="https://html.duckduckgo.com/html/?q=HTML-in-Canvas">🦆 DuckDuckGo</button>
         <button class="bookmark-chip" data-url="https://news.ycombinator.com">⚡ Hacker News</button>
@@ -621,7 +719,7 @@ function navigateTab(tabId, rawInput, pushHistory = true) {
       </div>
       <iframe
         class="live-web-iframe"
-        src="${PROXY_ENDPOINT}?url=${encodeURIComponent(finalUrl)}"
+        src="${getProxiedUrl(finalUrl)}"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         title="Paper Browser Frame ${tabId}"
       ></iframe>
@@ -641,7 +739,7 @@ function navigateTab(tabId, rawInput, pushHistory = true) {
     const iframe = tabData.paneElement.querySelector("iframe");
     if (iframe) {
       browserProgressBar.className = "browser-progress-bar loading";
-      iframe.src = `${PROXY_ENDPOINT}?url=${encodeURIComponent(finalUrl)}`;
+      iframe.src = getProxiedUrl(finalUrl);
     }
   }
 
@@ -754,10 +852,8 @@ window.addEventListener("message", (e) => {
     const iframe = activeTab.paneElement.querySelector("iframe");
     if (!iframe) return;
 
-    const iframeRect = iframe.getBoundingClientRect();
-    const canvasRect = paperCanvas.getBoundingClientRect();
-    const x = iframeRect.left + e.data.clientX - canvasRect.left;
-    const y = iframeRect.top + e.data.clientY - canvasRect.top;
+    const x = (iframe.offsetLeft || 0) + e.data.clientX;
+    const y = (iframe.offsetTop || 0) + e.data.clientY;
     addRipple(x, y, "#38bdf8");
   } else if (e.data?.type === "paper_iframe_zoom") {
     if (e.data.deltaY < 0) {
@@ -867,6 +963,113 @@ if (btnCollapseDock && controlDock) {
   });
 }
 
+function updateProxyUI() {
+  const isEdge = proxyMode === "edge";
+  const isLocal = proxyMode === "local";
+  const isDirect = proxyMode === "direct";
+  const isCustom = proxyMode === "custom";
+
+  if (proxyPillIcon && proxyPillLabel) {
+    if (isLocal) {
+      proxyPillIcon.textContent = "💻";
+      proxyPillLabel.textContent = "本机网络";
+    } else if (isDirect) {
+      proxyPillIcon.textContent = "⚡";
+      proxyPillLabel.textContent = "直连模式";
+    } else if (isCustom) {
+      proxyPillIcon.textContent = "⚙️";
+      proxyPillLabel.textContent = "自定义代理";
+    } else {
+      proxyPillIcon.textContent = "☁️";
+      proxyPillLabel.textContent = "边缘代理";
+    }
+  }
+
+  btnDockProxyEdge?.classList.toggle("active", isEdge);
+  btnDockProxyLocal?.classList.toggle("active", isLocal);
+
+  const radio = document.querySelector(`input[name="proxyMode"][value="${proxyMode}"]`);
+  if (radio) radio.checked = true;
+
+  document.querySelectorAll(".proxy-option").forEach((opt) => {
+    opt.classList.toggle("active", opt.getAttribute("data-mode") === proxyMode);
+  });
+
+  const statusEl = document.getElementById("newtabProxyStatus");
+  if (statusEl) {
+    if (isLocal) {
+      statusEl.innerHTML =
+        "当前出口: <strong>💻 本地电脑网络 (127.0.0.1:3000)</strong> — 走本机真实IP/代理，已避开机房拦截";
+    } else if (isDirect) {
+      statusEl.innerHTML =
+        "当前出口: <strong>⚡ 直连模式 (Direct)</strong> — 直接在 iframe 中加载目标网页";
+    } else if (isCustom) {
+      statusEl.innerHTML = `当前出口: <strong>⚙️ 自定义代理</strong> (${customProxyUrl})`;
+    } else {
+      statusEl.innerHTML =
+        "当前出口: <strong>☁️ Cloudflare 边缘节点</strong> | 若访问 Google/ChatGPT 遇到验证码可切换为「💻 本机网络」";
+    }
+  }
+}
+
+function setProxyMode(newMode) {
+  proxyMode = newMode;
+  localStorage.setItem("paper_proxy_mode", proxyMode);
+  updateProxyUI();
+
+  // If active tab has an active website, reload with new proxy
+  const activeTab = tabsList.find((t) => t.id === activeTabId);
+  if (activeTab && !activeTab.isNewTab && activeTab.url) {
+    navigateTab(activeTab.id, activeTab.url, false);
+  }
+}
+
+// Proxy Switcher Listeners
+if (proxyPill) {
+  proxyPill.addEventListener("click", (e) => {
+    e.stopPropagation();
+    proxyPill.classList.toggle("open");
+    proxyDropdown?.classList.toggle("open");
+  });
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#proxyPill") && !e.target.closest("#proxyDropdown")) {
+    proxyPill?.classList.remove("open");
+    proxyDropdown?.classList.remove("open");
+  }
+});
+
+document.querySelectorAll('input[name="proxyMode"]').forEach((radio) => {
+  radio.addEventListener("change", (e) => {
+    setProxyMode(e.target.value);
+  });
+});
+
+document.querySelectorAll(".proxy-option").forEach((opt) => {
+  opt.addEventListener("click", (e) => {
+    if (e.target.tagName === "INPUT") return;
+    const mode = opt.getAttribute("data-mode");
+    if (mode) {
+      setProxyMode(mode);
+    }
+  });
+});
+
+if (customProxyInput) {
+  customProxyInput.value = customProxyUrl;
+  customProxyInput.addEventListener("change", (e) => {
+    customProxyUrl = e.target.value.trim();
+    localStorage.setItem("paper_custom_proxy", customProxyUrl);
+    if (proxyMode === "custom") {
+      setProxyMode("custom");
+    }
+  });
+}
+
+btnDockProxyEdge?.addEventListener("click", () => setProxyMode("edge"));
+btnDockProxyLocal?.addEventListener("click", () => setProxyMode("local"));
+
 // New Tab Button Click '+'
 btnNewTab.addEventListener("click", () => {
   createTab(null, "新标签页", true);
@@ -903,7 +1106,7 @@ btnReload.addEventListener("click", () => {
     const iframe = activeTab.paneElement?.querySelector("iframe");
     if (iframe) {
       browserProgressBar.className = "browser-progress-bar loading";
-      iframe.src = `${PROXY_ENDPOINT}?url=${encodeURIComponent(activeTab.url)}&t=${Date.now()}`;
+      iframe.src = getProxiedUrl(activeTab.url);
     }
   }
 });
@@ -1003,7 +1206,9 @@ function initPaperBrowser() {
   setZoom(1.0);
 
   // Default: start with exactly ONE tab as requested
-  createTab("https://en.wikipedia.org/wiki/Paper", "维基百科: 纸", true);
+  // Default: start with fresh interactive New Tab page
+  createTab(null, "新标签页", true);
+  updateProxyUI();
 
   statusDot.className = "dot active";
   statusText.textContent = "3D 物理纸张引擎: 运行中 (动态多标签 + DPR缩放)";

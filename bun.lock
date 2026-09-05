@@ -5,6 +5,7 @@
     "": {
       "devDependencies": {
         "@cloudflare/workers-types": "^5.20260905.1",
+        "carryctx": "0.8.1",
         "typescript": "^7.0.2",
         "vite": "^8.2.2",
       },
@@ -86,6 +87,18 @@
     "@typescript/typescript-win32-arm64": ["@typescript/typescript-win32-arm64@7.0.2", "", { "os": "win32", "cpu": "arm64" }, "sha512-Gyl1Vy6OsWesLzmq+EP0Fb7b4Nid5232AvcA2SFcdYreldpNtYFFofPjnt62y9hQy7VTaZp65ICJjuAQRaVcIQ=="],
 
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
+
+    "carryctx": ["carryctx@0.8.1", "", { "optionalDependencies": { "carryctx-cli-darwin-arm64": "0.8.1", "carryctx-cli-darwin-x64": "0.8.1", "carryctx-cli-linux-arm64-gnu": "0.8.1", "carryctx-cli-linux-x64-gnu": "0.8.1", "carryctx-cli-windows-x64": "0.8.1" }, "bin": { "carryctx": "bin/carryctx.js" } }, "sha512-2NgJgIlXQsM6VzKCHoYaTlLwL3CayiAYX/52+Vm1PuZlcIEPe0wFeUrOE066Yujdx5vaOMSaPBo3ezQ93TPEZg=="],
+
+    "carryctx-cli-darwin-arm64": ["carryctx-cli-darwin-arm64@0.8.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-9qCsElsOYbpwdvNvXlYNJ8sOxSwdszVPtjzcJ5g/Mws+ibFKgPdV6wxgy15hxIF70hvX1sgfimmJr6+hCq4XDA=="],
+
+    "carryctx-cli-darwin-x64": ["carryctx-cli-darwin-x64@0.8.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-Utzt+N2zJcfDEqphODZTMJmoJr09dtmOP6jdRJhEDs6qAfLnadDGsfRolMauXc6GCnnwiWT397HK+htgi9SQjA=="],
+
+    "carryctx-cli-linux-arm64-gnu": ["carryctx-cli-linux-arm64-gnu@0.8.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-DDmPvdlmSBXnIe54si6o9ZEysX7HYc5Ocbhape5JCqe6blBkmJLw5yyYgtih3DROUz1ken/7UcVuY8gatkk0Eg=="],
+
+    "carryctx-cli-linux-x64-gnu": ["carryctx-cli-linux-x64-gnu@0.8.1", "", { "os": "linux", "cpu": "x64" }, "sha512-AAH2QLiFMaOTWIZzcoin5XhlrZo8bpfC/GPZa7MSFpjCZ7OZ06AOUkeA+F1zGIVWuNPeGXQIyYiJF0fClEsupQ=="],
+
+    "carryctx-cli-windows-x64": ["carryctx-cli-windows-x64@0.8.1", "", { "os": "win32", "cpu": "x64" }, "sha512-6/ZMH4pVD9oLQOI65LFQP9NexgVMLWGIF7YwMsfUAOeVzCtEhFuxeQJjWHlkWfK0czQigWuu8UN30m5m2+8oeg=="],
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 

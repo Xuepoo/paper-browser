@@ -1652,3 +1652,185 @@ body {
     margin: 12px auto;
   }
 }
+
+/* =========================================================
+ * Proxy Selector & Dropdown Controls
+ * ========================================================= */
+
+.proxy-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.proxy-pill:hover {
+  background: rgba(51, 65, 85, 0.9);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #ffffff;
+}
+
+.proxy-pill.open {
+  border-color: #0284c7;
+  background: rgba(2, 132, 199, 0.2);
+  color: #38bdf8;
+}
+
+.proxy-arrow {
+  font-size: 8px;
+  color: #94a3b8;
+  transition: transform 0.15s ease;
+}
+
+.proxy-pill.open .proxy-arrow {
+  transform: rotate(180deg);
+}
+
+.proxy-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 130px;
+  width: 340px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  padding: 14px;
+  z-index: 150;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.proxy-dropdown.open {
+  display: flex;
+}
+
+.dropdown-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dropdown-header strong {
+  font-size: 12px;
+  color: #f1f5f9;
+}
+
+.dropdown-subtitle {
+  font-size: 10.5px;
+  color: #94a3b8;
+}
+
+.dropdown-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proxy-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.proxy-option:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.proxy-option.active {
+  background: rgba(2, 132, 199, 0.18);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.proxy-option input[type="radio"] {
+  margin-top: 3px;
+  accent-color: #38bdf8;
+}
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.option-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.option-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.custom-proxy-input {
+  width: 100%;
+  margin-top: 5px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #f1f5f9;
+  font-family: var(--font-mono);
+}
+
+.custom-proxy-input:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+.dropdown-footer {
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.local-tip {
+  font-size: 10.5px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.09);
+  padding: 8px 10px;
+  border-radius: 6px;
+  border-left: 3px solid #38bdf8;
+  line-height: 1.45;
+}
+
+.newtab-proxy-status {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.newtab-proxy-status strong {
+  color: #38bdf8;
+}
